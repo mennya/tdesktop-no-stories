@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/username_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "data/data_user.h"
 #include "data/notify/data_notify_settings.h"
 #include "info/info_memento.h"
@@ -212,8 +213,12 @@ Result ShowMyProfile(const Context &ctx) {
 	if (!ctx.controller) {
 		return Result::NeedsAuth;
 	}
-	ctx.controller->showSection(
-		Info::Stories::MakeMyProfile(ctx.controller->session().user()));
+	if (Core::ForkSettings::kStoriesEnabled) {
+		ctx.controller->showSection(
+			Info::Stories::MakeMyProfile(ctx.controller->session().user()));
+	} else {
+		ctx.controller->showPeerInfo(ctx.controller->session().user());
+	}
 	return Result::Handled;
 }
 
@@ -419,6 +424,10 @@ void RegisterSettingsHandlers(Router &router) {
 		.action = CodeBlock{ [](const Context &ctx) {
 			if (!ctx.controller) {
 				return Result::NeedsAuth;
+			}
+			if (!Core::ForkSettings::kStoriesEnabled) {
+				ctx.controller->showToast(tr::lng_fork_story_hidden(tr::now));
+				return Result::Handled;
 			}
 			ctx.controller->showSection(Info::Stories::Make(
 				ctx.controller->session().user(),

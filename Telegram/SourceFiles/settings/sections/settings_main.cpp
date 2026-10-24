@@ -24,6 +24,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/username_box.h"
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "data/components/credits.h"
 #include "data/components/promo_suggestions.h"
 #include "data/data_chat_filters.h"
@@ -370,8 +371,12 @@ void BuildSectionButtons(SectionBuilder &builder) {
 			.title = tr::lng_settings_my_account(),
 			.icon = { &st::menuIconProfile },
 			.onClick = [=] {
-				controller->showSection(
-					Info::Stories::MakeMyProfile(session->user()));
+				if (Core::ForkSettings::kStoriesEnabled) {
+					controller->showSection(
+						Info::Stories::MakeMyProfile(session->user()));
+				} else {
+					controller->showPeerInfo(session->user());
+				}
 			},
 			.keywords = { u"profile"_q, u"edit"_q, u"information"_q },
 		});
