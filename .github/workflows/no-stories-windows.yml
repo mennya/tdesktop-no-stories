@@ -148,10 +148,11 @@ jobs:
           TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: python TBuild/tdesktop/Telegram/build/no-stories/configure.py
 
+      - name: Verify generated Qt plugin compilation
+        run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target external_qt_static_plugins_kimageformats
+
       - name: Build Windows x64 Release
-        run: |
-          cmake --build TBuild/tdesktop/out --config Release --target Telegram --parallel 4
-          if ($LASTEXITCODE -ne 0) { throw 'Telegram build failed.' }
+        run: python TBuild/tdesktop/Telegram/build/no-stories/build.py
 
       - name: Package isolated portable and installer
         run: python TBuild/tdesktop/Telegram/build/no-stories/package.py --output artifacts

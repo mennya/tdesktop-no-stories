@@ -46,6 +46,13 @@ libraries enabled, then builds the `Telegram` target. It does not build or ship
 the official updater, and compiles with `DESKTOP_APP_DISABLE_AUTOUPDATE=ON`.
 Crash report submission is also disabled for this personal build.
 
+The app build uses the resolved `USERPROFILE\TBuild\tdesktop\out` path instead
+of the longer workspace junction. CMake limits object paths to 220 characters;
+the build helper checks generated compiler outputs against Windows' 260-character
+limit. It first compiles the Qt image-format plugin target, including generated
+MOC sources, before building the remaining Telegram targets. Dependency locations
+and cache keys are independent of this application-output path handling.
+
 The portable ZIP includes `TelegramForcePortable`, which upstream's
 `CheckPortableVersionFolder()` uses for isolated account storage. Extract the
 whole ZIP into its own writable folder. Keep that directory beside `Telegram.exe`.

@@ -42,6 +42,8 @@ def main():
             sys.executable, str(root / "Telegram" / "configure.py"),
             "-G", "Ninja Multi-Config", "qt6", "-C", str(cache),
             "-DCMAKE_CONFIGURATION_TYPES=Release",
+            "-DCMAKE_OBJECT_PATH_MAX=220",
+            "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
             "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
             "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=",
             "-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON",
