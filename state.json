@@ -1,7 +1,9 @@
 {
-  "schema": 1,
+  "failures": {},
   "installed_tag": "v7.3.3",
-  "reviewed": {},
   "outbox": {},
-  "failures": {}
+  "reviewed": {
+    "release:v7.3.3": "aa16746644b01f1a986bb0d08d53c79effffed2ca827af53d792bc0a2d48c095"
+  },
+  "schema": 1
 }
