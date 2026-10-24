@@ -1,3 +1,19 @@
+# Telegram Desktop — No Stories
+
+Personal Windows x64 fork of Telegram Desktop, based on upstream v7.3.3.
+It hides Stories throughout the client and the reminder to set your birthday.
+Shared Stories use a non-interactive placeholder; ordinary messages, media and
+live broadcasts remain available. Official auto-updates are disabled.
+
+See [fork build and packaging instructions](docs/building-no-stories.md).
+The installer and portable package keep their account data separate from the
+official client. Builds are unsigned and require your own Telegram API credentials.
+
+The original project's documentation follows. Its download links are official
+upstream builds and do not contain this fork's changes.
+
+---
+
 # [Telegram Desktop][telegram_desktop] – Official Messenger
 
 This is the complete source code and the build instructions for the official [Telegram][telegram] messenger desktop client, based on the [Telegram API][telegram_api] and the [MTProto][telegram_proto] secure protocol.

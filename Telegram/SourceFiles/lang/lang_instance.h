@@ -90,6 +90,11 @@ public:
 	QString getValue(ushort key) const {
 		Expects(key < _values.size());
 
+		if (key == tr::lng_fork_story_hidden.base
+			&& !_nonDefaultSet[key]
+			&& (_id == u"ru"_q || baseId() == u"ru"_q)) {
+			return u"Сторис скрыта"_q;
+		}
 		return _values[key];
 	}
 	QString getNonDefaultValue(const QByteArray &key) const;
