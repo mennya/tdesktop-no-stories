@@ -3,7 +3,12 @@
 This fork builds Windows x64 with Qt 6 from the approved upstream stable tag.
 The `No Stories Windows x64` workflow produces a Release executable, a portable
 ZIP, an unsigned installer and SHA-256 checksums. The first dependency build can
-take several hours. Later runs reuse dependency caches.
+take several hours. Later runs reuse separate build-tool, library and Qt caches.
+The workflow reports free disk space and removes disposable dependency object and
+debug-symbol files before caching and building the app. Qt installed object
+libraries and generated sources remain intact. The standard hosted runner has
+limited storage; the first real run must establish whether it is sufficient.
+No paid runner or cache-storage increase is enabled automatically.
 
 ## Build modes
 

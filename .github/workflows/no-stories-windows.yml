@@ -69,6 +69,7 @@ jobs:
             nuget sources Add -Name nuget.org -Source 'https://api.nuget.org/v3/index.json'
             if ($LASTEXITCODE -ne 0) { throw 'Could not configure NuGet.' }
           }
+          Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free
           "CACHE_KEY=win-x64-vs2026-$env:MSVC_TOOLSET-$env:SDK_VERSION-${{ hashFiles('TBuild/tdesktop/Telegram/build/prepare/prepare.py', 'TBuild/tdesktop/Telegram/build/qt_version.py') }}" >> $env:GITHUB_ENV
 
       - name: Restore build tools
@@ -83,13 +84,31 @@ jobs:
         id: libraries-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: TBuild/Libraries/win64
-          key: release-libraries-${{ env.CACHE_KEY }}
-          restore-keys: release-libraries-win-x64-vs2026-
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/cache_keys
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: release-libraries-v2-${{ env.CACHE_KEY }}
+          restore-keys: release-libraries-v2-win-x64-vs2026-
+
+      - name: Restore Qt Release dependencies
+        id: qt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: release-qt-v2-${{ env.CACHE_KEY }}
+          restore-keys: release-qt-v2-win-x64-vs2026-
 
       - name: Prepare dependencies including Release libraries
         shell: cmd
         run: call TBuild\tdesktop\Telegram\build\prepare\win.bat silent qt6
+
+      - name: Remove disposable dependency build products
+        run: ./TBuild/tdesktop/Telegram/build/no-stories/prune-dependencies.ps1
 
       - name: Save build tools before compiling application
         if: steps.tools-cache.outputs.cache-hit != 'true'
@@ -102,8 +121,22 @@ jobs:
         if: steps.libraries-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: TBuild/Libraries/win64
-          key: release-libraries-${{ env.CACHE_KEY }}
+          path: |
+            TBuild/Libraries/win64/*
+            !TBuild/Libraries/win64/cache_keys
+            !TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/*
+            !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: release-libraries-v2-${{ env.CACHE_KEY }}
+
+      - name: Save Qt dependencies before compiling application
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            TBuild/Libraries/win64/[qQ]t[_-]*
+            TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
+          key: release-qt-v2-${{ env.CACHE_KEY }}
 
       - name: Configure fork with official updates disabled
         env:
