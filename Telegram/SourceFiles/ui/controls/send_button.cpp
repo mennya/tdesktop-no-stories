@@ -26,6 +26,11 @@ constexpr auto kVoiceToRoundIndex = 0;
 constexpr auto kRoundToVoiceIndex = 1;
 constexpr auto kForbiddenOpacity = 0.5;
 
+[[nodiscard]] bool IsRecordingButton(SendButton::Type type) {
+	return (type == SendButton::Type::Record)
+		|| (type == SendButton::Type::Round);
+}
+
 } // namespace
 
 SendButton::SendButton(QWidget *parent, const style::SendButton &st)
@@ -44,16 +49,18 @@ void SendButton::setState(State state) {
 
 	const auto previousType = _state.type;
 	const auto newType = state.type;
-	const auto voiceRoundTransition = isVoiceRoundTransition(
-		previousType,
-		newType);
+	const auto recordingTransition = IsRecordingButton(previousType)
+		|| IsRecordingButton(newType);
+	const auto voiceRoundTransition = !recordingTransition
+		&& isVoiceRoundTransition(previousType, newType);
 
 	const auto hasSlowmode = (_state.slowmodeDelay > 0);
 	const auto hasSlowmodeChanged = hasSlowmode != (state.slowmodeDelay > 0);
 	auto withSameSlowmode = state;
 	withSameSlowmode.slowmodeDelay = _state.slowmodeDelay;
-	const auto animate = hasSlowmodeChanged
-		|| (!hasSlowmode && withSameSlowmode != _state);
+	const auto animate = !recordingTransition
+		&& (hasSlowmodeChanged
+			|| (!hasSlowmode && withSameSlowmode != _state));
 
 	if (animate && !voiceRoundTransition) {
 		_contentFrom = grabContent();
@@ -81,6 +88,7 @@ void SendButton::setState(State state) {
 			kMarkupTextOptions);
 	}
 	_state = state;
+	setAttribute(Qt::WA_TransparentForMouseEvents, IsRecordingButton(newType));
 
 	const auto newShape = currentRippleShape();
 	if (_lastRippleShape != newShape) {
@@ -110,7 +118,13 @@ void SendButton::setState(State state) {
 		Unexpected("Send button type.");
 	}());
 
-	if (voiceRoundTransition) {
+	if (recordingTransition) {
+		_stateChangeAnimation.stop();
+		RippleButton::finishAnimating();
+		setPointerCursor(!IsRecordingButton(newType)
+			&& newType != Type::Slowmode);
+		updateSize();
+	} else if (voiceRoundTransition) {
 		_voiceRoundAnimating = true;
 
 		const auto toRound = (newType == Type::Round);
@@ -154,6 +168,9 @@ void SendButton::finishAnimating() {
 }
 
 void SendButton::paintEvent(QPaintEvent *e) {
+	if (IsRecordingButton(_state.type)) {
+		return;
+	}
 	auto p = QPainter(this);
 
 	auto over = (isDown() || isOver());
@@ -485,7 +502,8 @@ QRect SendButton::scheduleEllipseRect() const {
 }
 
 void SendButton::updateSize() {
-	if (_state.type == Type::EditPrice) {
+	if (_state.type == Type::EditPrice
+		|| IsRecordingButton(_state.type)) {
 		resize(0, _st.inner.height);
 		return;
 	}

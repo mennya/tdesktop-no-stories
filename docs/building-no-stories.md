@@ -79,10 +79,25 @@ taskbar labels and Alt-Tab. Chat-list counters and unread state are preserved.
 Popup notifications, sounds and the separate taskbar attention-flash setting
 keep their existing behavior.
 
+## Quiet names and composer
+
+Custom emoji in names and emoji status decorations use their first frame in the
+chat list, chat header, profiles, main menu and message sender names. Message-body
+emoji, stickers and reactions retain their existing animation behavior.
+
+Empty message composers show no microphone or round-video recording button and
+reclaim its space. Voice and round-video recording shortcuts are disabled. Send,
+schedule, edit and attachment controls retain their existing behavior, as do
+incoming voice-message playback and calls.
+
 ## Verification
 
 Inspect `build-info.json`, verify the package against `SHA256SUMS.txt`, and test
 startup inside the dedicated VM. With production credentials, verify login,
 ordinary messages/photos/videos, Stories suppression, the birthday setup prompt,
-and live broadcasts. A successful compiler run does not establish these UI
-behaviors. Preserve the portable account directory when replacing the executable.
+and live broadcasts. Check that name/status emoji stay on their first frame in
+the surfaces listed above while body emoji, stickers and reactions still animate.
+Check an empty composer has no recording icon or blank gap, then verify text
+sending, scheduled sending, editing and attachments, plus incoming voice playback
+and calls. A successful compiler run does not establish these UI behaviors.
+Preserve the portable account directory when replacing the executable.

@@ -2757,21 +2757,6 @@ void HistoryWidget::setupShortcuts() {
 				_stash->exchange();
 				return true;
 			});
-		if (showRecordButton()
-			&& _canSendMessages
-			&& _joinChannel->isHidden()
-			&& !_composeSearch) {
-			const auto isVoice = request->check(Command::RecordVoice, 1);
-			const auto isRound = !isVoice
-				&& request->check(Command::RecordRound, 1);
-			(isVoice || isRound) && request->handle([=] {
-				if (_voiceRecordBar) {
-					_voiceRecordBar->startRecordingAndLock(isRound);
-					return true;
-				}
-				return false;
-			});
-		}
 		const auto channel = _peer ? _peer->asChannel() : nullptr;
 		const auto hasRecentActions = channel
 			&& (channel->hasAdminRights() || channel->amCreator());

@@ -378,6 +378,7 @@ int PeerBadge::drawPremiumEmojiStatus(
 		.now = descriptor.now,
 		.position = _emojiStatus->lastPosition,
 		.paused = descriptor.paused || On(PowerSaving::kEmojiStatus),
+		.internal = { .forceFirstFrame = true },
 	});
 	return iconw - 4 * _emojiStatus->skip;
 }
@@ -425,6 +426,7 @@ void PeerBadge::paintEmojiStatusFrame(
 		.now = now,
 		.position = position,
 		.paused = paused || On(PowerSaving::kEmojiStatus),
+		.internal = { .forceFirstFrame = true },
 	});
 }
 

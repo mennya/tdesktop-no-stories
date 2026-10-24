@@ -146,6 +146,7 @@ void Badge::setContent(Content content) {
 					.now = crl::now(),
 					.paused = ((_animationPaused && _animationPaused())
 						|| On(PowerSaving::kEmojiStatus)),
+					.internal = { .forceFirstFrame = true },
 				};
 				if (!_emojiStatusPanel
 					|| !_emojiStatusPanel->paintBadgeFrame(check)) {

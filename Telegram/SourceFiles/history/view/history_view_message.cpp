@@ -2573,6 +2573,7 @@ void Message::paintFromName(
 					x - 2 * _fromNameStatus->skip,
 					y + _fromNameStatus->skip),
 				.paused = context.paused || On(PowerSaving::kEmojiStatus),
+				.internal = { .forceFirstFrame = true },
 			});
 		} else {
 			st::dialogsPremiumIcon.icon.paint(p, x, y, width(), color);

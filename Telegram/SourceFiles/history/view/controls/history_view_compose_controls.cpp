@@ -4547,19 +4547,6 @@ void ComposeControls::initVoiceRecordBar() {
 		return Ui::AppInFocus();
 	}) | rpl::on_next([=](not_null<Shortcuts::Request*> request) {
 		using Command = Shortcuts::Command;
-		if (showRecordButton()
-			&& Data::CanSendAnything(_history->peer, !_topicRootId)) {
-			const auto isVoice = request->check(Command::RecordVoice, 1);
-			const auto isRound = !isVoice
-				&& request->check(Command::RecordRound, 1);
-			(isVoice || isRound) && request->handle([=] {
-				if (_voiceRecordBar) {
-					_voiceRecordBar->startRecordingAndLock(isRound);
-					return true;
-				}
-				return false;
-			});
-		}
 		_field
 			&& _field->isVisible()
 			&& Data::CanSendTexts(_history->peer)
