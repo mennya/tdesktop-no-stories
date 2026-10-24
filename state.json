@@ -1,6 +1,15 @@
 {
   "failures": {},
   "installed_tag": "v7.3.3",
+  "last_check_at": "2026-10-24T14:14:17+00:00",
+  "last_counts": {
+    "changed": 1,
+    "deferred": 0,
+    "model_calls": 0,
+    "notifications": 0,
+    "sources": 1
+  },
+  "last_status": "ok",
   "outbox": {},
   "reviewed": {
     "release:v7.3.3": "aa16746644b01f1a986bb0d08d53c79effffed2ca827af53d792bc0a2d48c095"
