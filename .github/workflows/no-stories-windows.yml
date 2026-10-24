@@ -27,7 +27,7 @@ env:
 
 jobs:
   windows:
-    runs-on: windows-2025-vs2026
+    runs-on: windows-2022
     timeout-minutes: 360
     defaults:
       run:
@@ -56,8 +56,12 @@ jobs:
         uses: Eden-CI/msvc-dev-cmd@1bd71f95d6f3d1b2b3395b335cc63bcdc90cf223
         with:
           arch: x64
+          vsversion: '2022'
           sdk: ${{ env.SDK_VERSION }}
           toolset: ${{ env.MSVC_TOOLSET }}
+
+      - name: Verify matching MSVC and ATL before dependencies
+        run: ./TBuild/tdesktop/Telegram/build/no-stories/verify-toolchain.ps1
 
       - name: Configure dependency preparation
         run: |
@@ -70,7 +74,7 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'Could not configure NuGet.' }
           }
           Get-PSDrive -PSProvider FileSystem | Select-Object Name, Used, Free
-          "CACHE_KEY=win-x64-vs2026-$env:MSVC_TOOLSET-$env:SDK_VERSION-${{ hashFiles('TBuild/tdesktop/Telegram/build/prepare/prepare.py', 'TBuild/tdesktop/Telegram/build/qt_version.py') }}" >> $env:GITHUB_ENV
+          "CACHE_KEY=win-x64-vs2022-$env:MSVC_TOOLSET-$env:SDK_VERSION-${{ hashFiles('TBuild/tdesktop/Telegram/build/prepare/prepare.py', 'TBuild/tdesktop/Telegram/build/qt_version.py') }}" >> $env:GITHUB_ENV
 
       - name: Restore build tools
         id: tools-cache
@@ -78,7 +82,7 @@ jobs:
         with:
           path: TBuild/ThirdParty
           key: tools-${{ env.CACHE_KEY }}
-          restore-keys: tools-win-x64-vs2026-
+          restore-keys: tools-win-x64-vs2022-
 
       - name: Restore Release dependencies
         id: libraries-cache
@@ -91,7 +95,7 @@ jobs:
             TBuild/Libraries/win64/cache_keys/*
             !TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
           key: release-libraries-v2-${{ env.CACHE_KEY }}
-          restore-keys: release-libraries-v2-win-x64-vs2026-
+          restore-keys: release-libraries-v2-win-x64-vs2022-
 
       - name: Restore Qt Release dependencies
         id: qt-cache
@@ -101,7 +105,7 @@ jobs:
             TBuild/Libraries/win64/[qQ]t[_-]*
             TBuild/Libraries/win64/cache_keys/[qQ]t[_-]*
           key: release-qt-v2-${{ env.CACHE_KEY }}
-          restore-keys: release-qt-v2-win-x64-vs2026-
+          restore-keys: release-qt-v2-win-x64-vs2022-
 
       - name: Prepare dependencies including Release libraries
         shell: cmd

@@ -35,8 +35,13 @@ credentials are embedded in the executable, as with other Telegram clients.
 
 ## Build and package behavior
 
-The workflow pins its actions and uses `windows-2025-vs2026`, MSVC 14.44 and
-Windows SDK 10.0.26100.0. It runs upstream dependency preparation with Release
+The workflow pins its actions and uses `windows-2022`, Visual Studio 2022,
+MSVC 14.44 and Windows SDK 10.0.26100.0. This keeps the compiler and ATL headers
+on the same toolset: Breakpad's `dump_syms` could not find ATL when using the
+VS 2026 image's optional MSVC 14.44 compiler. Before preparing dependencies,
+the workflow verifies the selected versions, both ATL headers, and compilation,
+linking and execution of a small ATL probe. Ninja is used, so a Visual Studio
+2026 CMake generator is not required. It runs dependency preparation with Release
 libraries enabled, then builds the `Telegram` target. It does not build or ship
 the official updater, and compiles with `DESKTOP_APP_DISABLE_AUTOUPDATE=ON`.
 Crash report submission is also disabled for this personal build.
