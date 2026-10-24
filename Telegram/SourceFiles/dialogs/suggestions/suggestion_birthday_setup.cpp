@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "core/application.h"
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "data/components/promo_suggestions.h"
 #include "data/data_birthday.h"
 #include "data/data_user.h"
@@ -26,7 +27,8 @@ constexpr auto kSugSetBirthday = "BIRTHDAY_SETUP"_cs;
 
 bool Available(const Context &context) {
 	const auto session = context.session.get();
-	return session->promoSuggestions().current(kSugSetBirthday.utf8())
+	return Core::ForkSettings::kBirthdaySetupReminderEnabled
+		&& session->promoSuggestions().current(kSugSetBirthday.utf8())
 		&& !Data::IsBirthdayToday(session->user()->birthday());
 }
 
