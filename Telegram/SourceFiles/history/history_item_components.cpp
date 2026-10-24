@@ -35,6 +35,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/media/history_view_document.h"
 #include "history/view/history_view_transcribe_button.h"
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "core/local_url_handlers.h"
 #include "core/ui_integration.h"
 #include "media/audio/media_audio.h"
@@ -592,6 +593,13 @@ void HistoryMessageReply::updateData(
 		not_null<HistoryItem*> holder,
 		bool force) {
 	const auto guard = gsl::finally([&] { refreshReplyToMedia(); });
+	if (!Core::ForkSettings::kStoriesEnabled && _fields.storyId) {
+		_displaying = 0;
+		_unavailable = 1;
+		_pendingResolve = 0;
+		_multiline = 0;
+		return;
+	}
 	if (!force) {
 		if (resolvedMessage || resolvedStory || _unavailable) {
 			_pendingResolve = 0;

@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_facade.h"
 #include "core/application.h"
 #include "core/core_settings.h"
+#include "core/fork_settings.h"
 #include "main/main_account.h"
 #include "main/main_session.h"
 #include "mtproto/mtproto_config.h"
@@ -317,6 +318,9 @@ void Folder::validateListEntryCache() {
 }
 
 void Folder::updateStoriesCount(int count, int unread) {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		count = unread = 0;
+	}
 	if (_storiesCount == count && _storiesUnreadCount == unread) {
 		return;
 	}

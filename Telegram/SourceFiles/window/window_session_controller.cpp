@@ -71,6 +71,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "passport/passport_form_controller.h"
 #include "chat_helpers/tabbed_selector.h"
 #include "chat_helpers/emoji_interactions.h"
+#include "core/fork_settings.h"
 #include "core/shortcuts.h"
 #include "core/application.h"
 #include "core/core_screenshot_protection.h"
@@ -705,6 +706,9 @@ void SessionNavigation::showPeerByLinkResolved(
 		searchMessages(info.text, peer->owner().history(peer));
 	} else if (info.storyParam == u"live"_q) {
 		parentController()->openPeerStories(peer->id, std::nullopt, true);
+	} else if (!Core::ForkSettings::kStoriesEnabled
+		&& (info.storyParam.toInt() || info.storyAlbumId > 0)) {
+		showToast(tr::lng_fork_story_hidden(tr::now));
 	} else if (const auto storyId = info.storyParam.toInt()) {
 		const auto id = FullStoryId{ peer->id, storyId };
 		const auto context = (info.storyAlbumId > 0)
@@ -3521,6 +3525,10 @@ void SessionController::openDocument(
 bool SessionController::openSharedStory(HistoryItem *item) {
 	if (const auto media = item ? item->media() : nullptr) {
 		if (const auto storyId = media->storyId()) {
+			if (!Core::ForkSettings::kStoriesEnabled) {
+				showToast(tr::lng_fork_story_hidden(tr::now));
+				return true;
+			}
 			const auto story = session().data().stories().lookup(storyId);
 			if (story) {
 				_window->openInMediaView(::Media::View::OpenRequest(
@@ -3917,6 +3925,10 @@ void SessionController::openPeerStory(
 	auto &stories = session().data().stories();
 	const auto from = stories.lookup({ peer->id, storyId });
 	if (from) {
+		if (!Core::ForkSettings::kStoriesEnabled && !(*from)->call()) {
+			showToast(tr::lng_fork_story_hidden(tr::now));
+			return;
+		}
 		window().openInMediaView(OpenRequest(this, *from, context));
 	} else if (from.error() == Data::NoStory::Unknown) {
 		const auto done = crl::guard(&_storyOpenGuard, [=] {
@@ -3934,10 +3946,24 @@ void SessionController::openPeerStories(
 	using namespace Media::View;
 	using namespace Data;
 
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		onlyLive = true;
+	}
+
 	invalidate_weak_ptrs(&_storyOpenGuard);
 	auto &stories = session().data().stories();
 	if (const auto source = stories.source(peerId)) {
-		if (const auto idDates = source->toOpen()) {
+		auto idDates = source->toOpen();
+		if (!Core::ForkSettings::kStoriesEnabled) {
+			idDates = StoryIdDates();
+			for (const auto &id : source->ids) {
+				if (id.videoStream) {
+					idDates = id;
+					break;
+				}
+			}
+		}
+		if (idDates) {
 			if (onlyLive && !idDates.videoStream) {
 				showToast(tr::lng_stories_live_finished(tr::now));
 				return;

@@ -78,6 +78,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_instance.h"
 #include "core/application.h"
 #include "core/click_handler_types.h" // ClickHandlerContext
+#include "core/fork_settings.h"
 #include "lang/lang_keys.h"
 #include "storage/file_upload.h"
 #include "window/window_session_controller.h" // SessionController::uiShow.
@@ -1963,10 +1964,20 @@ std::unique_ptr<Media> MediaWebPage::clone(not_null<HistoryItem*> parent) {
 }
 
 DocumentData *MediaWebPage::document() const {
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (_page->type == WebPageType::Story
+			|| _page->type == WebPageType::StoryAlbum)) {
+		return nullptr;
+	}
 	return _page->document;
 }
 
 PhotoData *MediaWebPage::photo() const {
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (_page->type == WebPageType::Story
+			|| _page->type == WebPageType::StoryAlbum)) {
+		return nullptr;
+	}
 	return _page->photo;
 }
 
@@ -2020,6 +2031,11 @@ ItemPreview MediaWebPage::toPreview(ToPreviewOptions options) const {
 			: parent()->originalText();
 		return text.empty() ? Ui::Text::Colorized(_page->url) : text;
 	}();
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (_page->type == WebPageType::Story
+			|| _page->type == WebPageType::StoryAlbum)) {
+		return { .text = caption };
+	}
 	const auto pageTypeWithPreview = _page->type == WebPageType::Photo
 		|| _page->type == WebPageType::Video
 		|| _page->type == WebPageType::Document;
@@ -2097,6 +2113,11 @@ std::unique_ptr<HistoryView::Media> MediaWebPage::createView(
 		not_null<HistoryView::Element*> message,
 		not_null<HistoryItem*> realParent,
 		HistoryView::Element *replacing) {
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (_page->type == WebPageType::Story
+			|| _page->type == WebPageType::StoryAlbum)) {
+		return nullptr;
+	}
 	if (realParent->hideLinks()) {
 		realParent->setHasHiddenLinks(true);
 		return nullptr;
@@ -2942,6 +2963,9 @@ MediaStory::MediaStory(
 , _mention(mention) {
 	const auto owner = &parent->history()->owner();
 	owner->registerStoryItem(storyId, parent);
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		return;
+	}
 
 	const auto stories = &owner->stories();
 	const auto maybeStory = stories->lookup(storyId);
@@ -3003,6 +3027,9 @@ bool MediaStory::storyMention() const {
 }
 
 ItemPreview MediaStory::toPreview(ToPreviewOptions options) const {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		return { .text = notificationText() };
+	}
 	return {
 		.text = Ui::Text::Colorized(
 			Ui::Text::IconEmoji(&st::dialogsMiniStoryIcon)
@@ -3011,6 +3038,9 @@ ItemPreview MediaStory::toPreview(ToPreviewOptions options) const {
 }
 
 TextWithEntities MediaStory::notificationText() const {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		return tr::lng_fork_story_hidden(tr::now, tr::marked);
+	}
 	const auto stories = &parent()->history()->owner().stories();
 	const auto maybeStory = stories->lookup(_storyId);
 	return WithCaptionNotificationText(
@@ -3029,6 +3059,10 @@ QString MediaStory::pinnedTextSubstring() const {
 }
 
 TextForMimeData MediaStory::clipboardText() const {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		const auto text = notificationText();
+		return { text.text, text };
+	}
 	return WithCaptionClipboardText(
 		(_expired
 			? tr::lng_in_dlg_story_expired
@@ -3057,6 +3091,9 @@ std::unique_ptr<HistoryView::Media> MediaStory::createView(
 		not_null<HistoryView::Element*> message,
 		not_null<HistoryItem*> realParent,
 		HistoryView::Element *replacing) {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		return nullptr;
+	}
 	const auto spoiler = false;
 	const auto stories = &parent()->history()->owner().stories();
 	const auto maybeStory = stories->lookup(_storyId);

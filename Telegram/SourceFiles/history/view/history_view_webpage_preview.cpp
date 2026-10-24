@@ -7,12 +7,19 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "history/view/history_view_webpage_preview.h"
 
+#include "core/fork_settings.h"
 #include "data/data_file_origin.h"
 #include "data/data_web_page.h"
+#include "lang/lang_keys.h"
 
 namespace HistoryView {
 
 WebPageText TitleAndDescriptionFromWebPage(not_null<WebPageData*> d) {
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (d->type == WebPageType::Story
+			|| d->type == WebPageType::StoryAlbum)) {
+		return { .title = tr::lng_fork_story_hidden(tr::now) };
+	}
 	QString resultTitle, resultDescription;
 	const auto document = d->document;
 	const auto author = d->author;
@@ -61,6 +68,11 @@ bool DrawWebPageDataPreview(
 		not_null<WebPageData*> webpage,
 		not_null<PeerData*> context,
 		QRect to) {
+	if (!Core::ForkSettings::kStoriesEnabled
+		&& (webpage->type == WebPageType::Story
+			|| webpage->type == WebPageType::StoryAlbum)) {
+		return false;
+	}
 	const auto document = webpage->document;
 	const auto photo = webpage->photo;
 	if ((!photo || photo->isNull())

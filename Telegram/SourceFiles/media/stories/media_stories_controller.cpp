@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/click_handler_types.h"
 #include "core/core_settings.h"
+#include "core/fork_settings.h"
 #include "core/local_url_handlers.h"
 #include "core/update_checker.h"
 #include "data/data_changes.h"
@@ -856,7 +857,9 @@ void Controller::show(
 	auto &stories = story->owner().stories();
 	const auto storyId = story->fullId();
 	const auto peer = story->peer();
-	_context = context;
+	_context = Core::ForkSettings::kStoriesEnabled
+		? context
+		: Data::StoriesContext{ Data::StoriesContextSingle() };
 	_waitingForId = {};
 	_waitingForDelta = 0;
 	_videoStream = story->call();

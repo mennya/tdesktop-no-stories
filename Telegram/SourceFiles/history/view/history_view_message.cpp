@@ -14,6 +14,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "core/application.h"
 #include "core/click_handler_types.h" // ClickHandlerContext
+#include "core/fork_settings.h"
 #include "core/ui_integration.h"
 #include "core/update_checker.h"
 #include "history/view/history_view_cursor_state.h"
@@ -7237,7 +7238,9 @@ bool Message::hasVisibleText() const {
 		return !media || !media->hideMessageText();
 	} else if (textItem->emptyText()) {
 		if (const auto media = textItem->media()) {
-			return media->storyExpired() || media->storyUnsupported();
+			return (!Core::ForkSettings::kStoriesEnabled && media->storyId())
+				|| media->storyExpired()
+				|| media->storyUnsupported();
 		}
 		return false;
 	}
@@ -7266,7 +7269,9 @@ void Message::refreshInfoSkipBlock(HistoryItem *textItem) {
 	const auto hasTextSkipBlock = [&] {
 		if (!textItem || textItem->_text.empty()) {
 			if (const auto media = data()->media()) {
-				return media->storyExpired() || media->storyUnsupported();
+				return (!Core::ForkSettings::kStoriesEnabled && media->storyId())
+					|| media->storyExpired()
+					|| media->storyUnsupported();
 			}
 			return false;
 		} else if (factcheckBlock()

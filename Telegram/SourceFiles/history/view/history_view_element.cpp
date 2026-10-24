@@ -44,6 +44,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/core_settings.h"
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "core/ui_integration.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
@@ -2189,6 +2190,15 @@ void Element::validateText() {
 	};
 	const auto item = data();
 	const auto media = item->media();
+	if (!Core::ForkSettings::kStoriesEnabled && media && media->storyId()) {
+		_media = nullptr;
+		_textItem = item;
+		clearRichPage();
+		if (_text.isEmpty()) {
+			setTextWithLinks(tr::lng_fork_story_hidden(tr::now, tr::italic));
+		}
+		return;
+	}
 	const auto storyMention = media && media->storyMention();
 	const auto storyExpired = media && media->storyExpired();
 	const auto storyUnsupported = media && media->storyUnsupported();

@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_reply.h"
 
 #include "core/click_handler_types.h"
+#include "core/fork_settings.h"
 #include "core/ui_integration.h"
 #include "data/stickers/data_custom_emoji.h"
 #include "data/data_channel.h"
@@ -711,7 +712,9 @@ void Reply::updateName(
 	_maxWidth = std::max(nameMaxWidth, optimalTextSize.width());
 	if (!data->displaying()) {
 		const auto unavailable = data->unavailable();
-		_stateText = ((fields.messageId || fields.storyId) && !unavailable)
+		_stateText = (!Core::ForkSettings::kStoriesEnabled && fields.storyId)
+			? tr::lng_fork_story_hidden(tr::now)
+			: ((fields.messageId || fields.storyId) && !unavailable)
 			? tr::lng_profile_loading(tr::now)
 			: fields.storyId
 			? tr::lng_deleted_story(tr::now)

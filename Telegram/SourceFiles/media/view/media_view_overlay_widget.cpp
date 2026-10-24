@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "core/core_screenshot_protection.h"
 #include "core/file_utilities.h"
+#include "core/fork_settings.h"
 #include "core/mime_type.h"
 #include "core/ui_integration.h"
 #include "core/crash_reports.h"
@@ -4537,6 +4538,12 @@ void OverlayWidget::activate() {
 
 void OverlayWidget::show(OpenRequest request) {
 	const auto story = request.story();
+	if (!Core::ForkSettings::kStoriesEnabled && story && !story->call()) {
+		if (const auto controller = request.controller()) {
+			controller->showToast(tr::lng_fork_story_hidden(tr::now));
+		}
+		return;
+	}
 	const auto document = story ? story->document() : request.document();
 	const auto photo = story ? story->photo() : request.photo();
 	const auto call = story ? story->call() : request.call();
@@ -5908,6 +5915,9 @@ void OverlayWidget::storiesJumpTo(
 		return;
 	}
 	const auto story = *maybeStory;
+	if (!Core::ForkSettings::kStoriesEnabled && !story->call()) {
+		return;
+	}
 	setContext(StoriesContext{
 		story->peer(),
 		story->id(),
@@ -5928,6 +5938,11 @@ void OverlayWidget::storiesJumpTo(
 
 void OverlayWidget::storiesRedisplay(not_null<Data::Story*> story) {
 	Expects(_stories != nullptr);
+
+	if (!Core::ForkSettings::kStoriesEnabled && !story->call()) {
+		close();
+		return;
+	}
 
 	clearStreaming();
 	_streamingStartPaused = false;

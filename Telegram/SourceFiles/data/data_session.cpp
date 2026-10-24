@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "chat_helpers/stickers_lottie.h"
 #include "core/application.h"
 #include "core/core_settings.h"
+#include "core/fork_settings.h"
 #include "core/mime_type.h" // Core::IsMimeSticker
 #include "ui/image/image_location_factory.h" // Images::FromPhotoSize
 #include "ui/text/format_values.h" // Ui::FormatPhone
@@ -4561,6 +4562,9 @@ void Session::webpageApplyFields(
 					peerFromMTP(data.vpeer()),
 					data.vid().v,
 				};
+				if (!Core::ForkSettings::kStoriesEnabled) {
+					return;
+				}
 				if (const auto embed = data.vstory()) {
 					story = stories().applySingle(
 						peerFromMTP(data.vpeer()),
@@ -4591,7 +4595,10 @@ void Session::webpageApplyFields(
 			}, [](const auto &) {});
 		}
 	}
-	const auto type = story ? WebPageType::Story : ParseWebPageType(data);
+	const auto type = (story
+		|| (!Core::ForkSettings::kStoriesEnabled && storyId))
+		? WebPageType::Story
+		: ParseWebPageType(data);
 	const auto cachedPage = data.vcached_page();
 	const auto ivPhoto = photo ? processPhoto(*photo).get() : nullptr;
 	const auto ivDocument = document ? processDocument(*document).get() : nullptr;
