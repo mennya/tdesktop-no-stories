@@ -597,8 +597,9 @@ void MainWindow::unreadCounterChangedHook() {
 }
 
 void MainWindow::updateTaskbarAndIconCounters() {
-	const auto counter = Core::App().unreadBadge();
-	const auto muted = Core::App().unreadBadgeMuted();
+	// Keep Windows shell icons free of unread badges.
+	const auto counter = 0;
+	const auto muted = false;
 	const auto controller = sessionController();
 	const auto session = controller ? &controller->session() : nullptr;
 

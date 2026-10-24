@@ -223,13 +223,13 @@ void Tray::updateIcon() {
 		Tray::IconWithCounter(
 			CounterLayerArgs(
 				GetSystemMetrics(SM_CXSMICON),
-				Core::App().unreadBadge(),
-				Core::App().unreadBadgeMuted()),
+				0,
+				false),
 			true,
 			Core::App().settings().trayIconMonochrome(),
 			session && session->supportMode()));
 	_icon->updateIcon(forTrayIcon);
-	_icon->updateToolTip(Core::TrayIconToolTip());
+	_icon->updateToolTip(AppName.utf16());
 }
 
 void Tray::createMenu() {

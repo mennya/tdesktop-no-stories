@@ -34,6 +34,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
 #include "base/options.h"
+#include "base/platform/base_platform_info.h"
 #include "base/crc32hash.h"
 #include "ui/boxes/confirm_box.h"
 #include "ui/toast/toast.h"
@@ -892,7 +893,7 @@ void MainWindow::updateTitle() {
 	const auto suffix = nativeTitleSuffix();
 	const auto settings = Core::App().settings().windowTitleContent();
 	const auto locked = Core::App().passcodeLocked();
-	const auto counter = settings.hideTotalUnread
+	const auto counter = (Platform::IsWindows() || settings.hideTotalUnread)
 		? 0
 		: Core::App().unreadBadge();
 	const auto added = (counter > 0) ? u" (%1)"_q.arg(counter) : QString();
@@ -925,7 +926,9 @@ void MainWindow::updateTitle() {
 		? tr::lng_saved_messages(tr::now)
 		: history->peer->name();
 	const auto wrapped = st::wrap_rtl(name);
-	const auto threadCounter = thread->chatListBadgesState().unreadCounter;
+	const auto threadCounter = Platform::IsWindows()
+		? 0
+		: thread->chatListBadgesState().unreadCounter;
 	const auto primary = (threadCounter > 0)
 		? u"(%1) %2"_q.arg(threadCounter).arg(wrapped)
 		: wrapped;

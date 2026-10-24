@@ -70,6 +70,15 @@ upstream workflows are retained in `.github/upstream-workflows`, outside the
 Actions discovery directory, so their bots and multi-platform pipelines do not
 run for this fork branch.
 
+## Windows unread indicators
+
+This personal fork keeps the Windows tray and taskbar icons free of unread
+numbers, muted grey badges and the monochrome unread dot. Tray tooltips and
+window titles also omit unread counts, including active-chat counts shown by
+taskbar labels and Alt-Tab. Chat-list counters and unread state are preserved.
+Popup notifications, sounds and the separate taskbar attention-flash setting
+keep their existing behavior.
+
 ## Verification
 
 Inspect `build-info.json`, verify the package against `SHA256SUMS.txt`, and test
