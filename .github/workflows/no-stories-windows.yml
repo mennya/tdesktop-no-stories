@@ -3,6 +3,12 @@ name: No Stories Windows x64
 on:
   push:
     branches: [codex/no-stories]
+    paths-ignore:
+      - 'docs/**'
+      - '.github/workflows/release-watch.yml'
+      - '.github/scripts/release_watch.py'
+      - '.github/scripts/test_release_watch.py'
+      - '.github/release-watch-config.json'
   workflow_dispatch:
     inputs:
       build_kind:

@@ -12,8 +12,9 @@ No paid runner or cache-storage increase is enabled automatically.
 
 ## Build modes
 
-Pushes to the trusted `codex/no-stories` branch create **production** packages
-using this repository's API secrets. An explicit manual `build_kind=verification`
+Source/build changes pushed to the trusted `codex/no-stories` branch create **production** packages
+using this repository's API secrets. Documentation and release-monitor-only
+changes do not trigger a build. An explicit manual `build_kind=verification`
 run uses Telegram's limited test credentials. Those filenames and README clearly
 mark them as verification-only; do not use them as a daily client.
 

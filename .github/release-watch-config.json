@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "installed_tag": "v7.3.3",
+  "installed_commit": "e588ca303d0f263fa74e61b0244720128003b948",
+  "model": "gpt-6-luna",
+  "state_branch": "codex/release-watch-state",
+  "max_model_calls": 6
+}

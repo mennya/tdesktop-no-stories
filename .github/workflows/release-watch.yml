@@ -1,0 +1,66 @@
+name: Telegram Release Watch
+
+on:
+  schedule:
+    - cron: '0 9 * * *'
+      timezone: Europe/Berlin
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Check releases or send one explicit Pushover test
+        type: choice
+        options: [check, test]
+        default: check
+        required: true
+  push:
+    branches: [codex/no-stories]
+    paths:
+      - '.github/workflows/release-watch.yml'
+      - '.github/scripts/release_watch.py'
+      - '.github/scripts/test_release_watch.py'
+      - '.github/release-watch-config.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: telegram-release-watch
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    if: github.repository == 'mennya/tdesktop-no-stories'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+      - name: Test classification, source parsing and notification state
+        run: python3 -m unittest discover -s .github/scripts -p 'test_release_watch.py' -v
+
+  monitor:
+    needs: tests
+    if: >-
+      github.repository == 'mennya/tdesktop-no-stories' &&
+      github.ref == 'refs/heads/codex/no-stories' &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
+      - name: Check official sources or send the requested test
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          PUSHOVER_APP_TOKEN: ${{ secrets.PUSHOVER_APP_TOKEN }}
+          PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
+          PUSHOVER_DEVICE: ${{ vars.PUSHOVER_DEVICE }}
+          MONITOR_MODE: ${{ inputs.mode || 'check' }}
+        run: python3 .github/scripts/release_watch.py --mode "$MONITOR_MODE"
