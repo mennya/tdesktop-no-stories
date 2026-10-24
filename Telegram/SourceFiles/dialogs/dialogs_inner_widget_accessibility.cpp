@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_inner_widget_accessibility.h"
 
+#include "core/fork_settings.h"
 #include "data/notify/data_notify_settings.h"
 #include "data/data_channel.h"
 #include "data/data_chat_filters.h"
@@ -519,7 +520,7 @@ QString SubItemValue(
 		return {};
 	}
 	case SubItem::Stories: {
-		if (peer->hasActiveStories()) {
+		if (Core::ForkSettings::kStoriesEnabled && peer->hasActiveStories()) {
 			if (peer->hasUnreadStories()) {
 				const auto source = peer->owner().stories().source(
 					peer->id);

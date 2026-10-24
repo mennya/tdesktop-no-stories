@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_widget.h"
 
+#include "core/fork_settings.h"
 #include "dialogs/ui/dialogs_stories_content.h"
 #include "history/history.h"
 #include "info/profile/info_profile_inner_widget.h"
@@ -357,7 +358,7 @@ rpl::producer<QString> Widget::title() {
 
 rpl::producer<Dialogs::Stories::Content> Widget::titleStories() {
 	const auto peer = controller()->key().peer();
-	if (peer && !peer->isChat()) {
+	if (Core::ForkSettings::kStoriesEnabled && peer && !peer->isChat()) {
 		return Dialogs::Stories::LastForPeer(peer);
 	}
 	return nullptr;

@@ -24,6 +24,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "calls/calls_instance.h"
 #include "chat_helpers/stickers_lottie.h"
 #include "core/application.h"
+#include "core/fork_settings.h"
 #include "core/shortcuts.h"
 #include "data/components/recent_shared_media_gifts.h"
 #include "data/data_birthday.h"
@@ -1627,7 +1628,10 @@ void TopBar::setupUserpicButton(
 					}
 				}
 			} else if (_hasStories) {
-				controller->openPeerStories(_peer->id);
+				controller->openPeerStories(
+					_peer->id,
+					std::nullopt,
+					!Core::ForkSettings::kStoriesEnabled);
 			} else {
 				openPhoto();
 			}
@@ -3808,12 +3812,13 @@ void TopBar::updateStoryOutline(std::optional<QColor> edgeColor) {
 		return;
 	}
 
-	const auto hasActiveStories = (_source == Source::Preview)
-		? true
-		: (user ? user->hasActiveStories() : channel->hasActiveStories());
 	const auto hasLiveStories = (_source == Source::Preview)
 		? false
 		: (user ? user->hasActiveVideoStream() : false);
+	const auto hasActiveStories = hasLiveStories
+		|| (Core::ForkSettings::kStoriesEnabled
+			&& ((_source == Source::Preview)
+				|| _peer->hasActiveStories()));
 
 	if (_hasStories != hasActiveStories
 		|| _hasLiveStories != hasLiveStories) {

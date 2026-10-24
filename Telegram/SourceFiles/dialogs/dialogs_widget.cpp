@@ -63,6 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "apiwrap.h"
 #include "chat_helpers/message_field.h"
 #include "core/application.h"
+#include "core/fork_settings.h"
 #include "core/ui_integration.h"
 #include "core/update_checker.h"
 #include "core/shortcuts.h"
@@ -422,7 +423,8 @@ Widget::Widget(
 	object_ptr<Ui::IconButton>(this, st::dialogsLock))
 , _scroll(this)
 , _scrollToTop(_scroll, st::dialogsToUp)
-, _stories((_layout != Layout::Child)
+, _stories((Core::ForkSettings::kStoriesEnabled
+	&& _layout != Layout::Child)
 	? std::make_unique<Stories::List>(
 		this,
 		st::dialogsStoriesList,
@@ -1057,9 +1059,14 @@ void Widget::chosenRow(const ChosenRow &row) {
 	} else if (history
 		&& row.userpicClick
 		&& (row.message.fullId.msg == ShowAtUnreadMsgId)
-		&& history->peer->hasActiveStories()
+		&& (Core::ForkSettings::kStoriesEnabled
+			? history->peer->hasActiveStories()
+			: history->peer->hasActiveVideoStream())
 		&& !history->peer->isSelf()) {
-		controller()->openPeerStories(history->peer->id);
+		controller()->openPeerStories(
+			history->peer->id,
+			std::nullopt,
+			!Core::ForkSettings::kStoriesEnabled);
 		return;
 	} else if (userpicCommunity) {
 		controller()->showPeerInfo(userpicCommunity);
@@ -1146,7 +1153,7 @@ void Widget::chosenRow(const ChosenRow &row) {
 			hideChildList();
 		}
 	} else if (const auto folder = row.key.folder()) {
-		if (row.userpicClick) {
+		if (Core::ForkSettings::kStoriesEnabled && row.userpicClick) {
 			const auto list = Data::StorySourcesList::Hidden;
 			const auto &sources = session().data().stories().sources(list);
 			if (!sources.empty()) {

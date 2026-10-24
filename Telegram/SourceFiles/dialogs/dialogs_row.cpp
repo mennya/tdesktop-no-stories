@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_row.h"
 
+#include "core/fork_settings.h"
 #include "ui/chat/chat_theme.h" // CountAverageColor.
 #include "ui/color_contrast.h"
 #include "ui/effects/credits_graphics.h"
@@ -738,9 +739,13 @@ void Row::paintUserpic(
 	const auto storiesPeer = peer
 		? ((peer->isUser() || peer->isChannel()) ? peer : nullptr)
 		: nullptr;
-	const auto storiesFolder = peer ? nullptr : _id.folder();
+	const auto storiesFolder = (Core::ForkSettings::kStoriesEnabled && !peer)
+		? _id.folder()
+		: nullptr;
 	const auto storiesHas = storiesPeer
-		? storiesPeer->hasActiveStories()
+		? (Core::ForkSettings::kStoriesEnabled
+			? storiesPeer->hasActiveStories()
+			: storiesPeer->hasActiveVideoStream())
 		: storiesFolder
 		? (storiesFolder->storiesCount() > 0)
 		: false;
@@ -763,14 +768,18 @@ void Row::paintUserpic(
 	const auto storiesSource = (storiesHas && storiesPeer)
 		? storiesPeer->owner().stories().source(storiesPeer->id)
 		: nullptr;
-	const auto storiesCountReal = storiesSource
+	const auto storiesCountReal = !Core::ForkSettings::kStoriesEnabled
+		? (storiesHas ? 1 : 0)
+		: storiesSource
 		? int(storiesSource->ids.size())
 		: storiesFolder
 		? storiesFolder->storiesCount()
 		: storiesHas
 		? 1
 		: 0;
-	const auto storiesUnreadCountReal = storiesSource
+	const auto storiesUnreadCountReal = !Core::ForkSettings::kStoriesEnabled
+		? 0
+		: storiesSource
 		? storiesSource->unreadCount()
 		: storiesFolder
 		? storiesFolder->storiesUnreadCount()

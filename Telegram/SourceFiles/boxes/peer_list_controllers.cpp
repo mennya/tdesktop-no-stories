@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_premium.h" // MessageMoneyRestriction.
 #include "base/random.h"
 #include "boxes/filters/edit_filter_chats_list.h"
+#include "core/fork_settings.h"
 #include "settings/settings_common.h"
 #include "settings/sections/settings_premium.h"
 #include "ui/boxes/confirm_box.h"
@@ -592,8 +593,13 @@ bool PeerListStories::handleClick(not_null<PeerData*> peer) {
 	if (point && point->x() < st.photoPosition.x() + st.photoSize) {
 		if (const auto window = peer->session().tryResolveWindow()) {
 			if (const auto user = peer->asUser()) {
-				if (user->hasActiveStories()) {
-					window->openPeerStories(peer->id);
+				if (Core::ForkSettings::kStoriesEnabled
+					? user->hasActiveStories()
+					: user->hasActiveVideoStream()) {
+					window->openPeerStories(
+						peer->id,
+						std::nullopt,
+						!Core::ForkSettings::kStoriesEnabled);
 					return true;
 				}
 			}
@@ -638,6 +644,10 @@ void PeerListStories::applyForRow(
 		not_null<PeerListRow*> row,
 		Counts counts,
 		bool force) {
+	if (!Core::ForkSettings::kStoriesEnabled) {
+		counts.count = counts.videoStream ? 1 : 0;
+		counts.unread = 0;
+	}
 	auto &existing = _counts[row->id()];
 	if (!force && existing == counts) {
 		return;

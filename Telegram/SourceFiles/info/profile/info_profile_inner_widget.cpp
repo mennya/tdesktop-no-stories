@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "info/profile/info_profile_inner_widget.h"
 
+#include "core/fork_settings.h"
 #include "info/info_controller.h"
 #include "info/info_memento.h"
 #include "info/info_wrap_widget.h"
@@ -288,7 +289,9 @@ object_ptr<Ui::RpWidget> InnerWidget::setupContent(
 			tabs.push_back(MakeChatsTabDescriptor());
 		}
 		if (!_topic && !_savedMessages) {
-			tabs.push_back(MakeStoriesTabDescriptor(tabsPeer));
+			if (Core::ForkSettings::kStoriesEnabled) {
+				tabs.push_back(MakeStoriesTabDescriptor(tabsPeer));
+			}
 			if (!_sublist) {
 				tabs.push_back(MakeGiftsTabDescriptor(_peer));
 			}

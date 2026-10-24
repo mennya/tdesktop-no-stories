@@ -11,6 +11,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/event_filter.h"
 #include "base/qt_signal_producer.h"
 #include "boxes/about_box.h"
+#include "core/fork_settings.h"
 #include "core/update_channel.h"
 #include "boxes/peer_list_controllers.h"
 #include "boxes/premium_preview_box.h"
@@ -511,7 +512,8 @@ void MainMenu::setupArchive() {
 	const auto checkArchive = [=] {
 		const auto f = folder();
 		return f
-			&& (!f->chatsList()->empty() || f->storiesCount() > 0)
+			&& (!f->chatsList()->empty()
+				|| (Core::ForkSettings::kStoriesEnabled && f->storiesCount() > 0))
 			&& controller->session().settings().archiveInMainMenu();
 	};
 
@@ -675,8 +677,12 @@ void MainMenu::setupMenu() {
 				st::mainMenuButton,
 				{ &st::menuIconProfile })
 		)->setClickedCallback([=] {
-			controller->showSection(
-				Info::Stories::MakeMyProfile(controller->session().user()));
+			if (Core::ForkSettings::kStoriesEnabled) {
+				controller->showSection(Info::Stories::MakeMyProfile(
+					controller->session().user()));
+			} else {
+				controller->showPeerInfo(controller->session().user());
+			}
 		});
 
 		SetupMenuBots(_menu, controller);
