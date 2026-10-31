@@ -81,6 +81,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/options.h"
 #include "base/unixtime.h"
 #include "info/channel_statistics/earn/earn_icons.h"
+#include "ui/userpic_view.h"
 #include "ui/controls/userpic_button.h"
 #include "ui/text/text_utilities.h"
 #include "ui/text/format_values.h" // Ui::FormatPhone.
@@ -3453,6 +3454,9 @@ void SessionController::openPhoto(
 void SessionController::openPhoto(
 		not_null<PhotoData*> photo,
 		not_null<PeerData*> peer) {
+	if (Ui::PersonalUserpicOnly(peer)) {
+		return;
+	}
 	const auto origin = peer->isUser()
 		? Data::FileOrigin(Data::FileOriginUserPhoto(
 			peerToUser(peer->id),

@@ -13,10 +13,14 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QColor>
 
 class QPainter;
+class PeerData;
 
 namespace Ui {
 
 class EmptyUserpic;
+
+[[nodiscard]] bool PersonalUserpicOnly(not_null<const PeerData*> peer);
+[[nodiscard]] bool PeerUserpicPhotoAllowed(not_null<const PeerData*> peer);
 
 [[nodiscard]] float64 ForumUserpicRadiusMultiplier();
 

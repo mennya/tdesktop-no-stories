@@ -16,6 +16,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_entry.h"
 #include "dialogs/ui/dialogs_layout.h"
 #include "ui/painter.h"
+#include "ui/userpic_view.h"
 #include "styles/style_dialogs.h"
 
 namespace Dialogs::Ui {
@@ -40,6 +41,14 @@ void VideoUserpic::paintLeft(
 		int size,
 		bool paused) {
 	_lastSize = size;
+
+	if (::Ui::PersonalUserpicOnly(_peer)) {
+		_video = nullptr;
+		_videoPhotoMedia = nullptr;
+		_videoPhotoId = 0;
+		_peer->paintUserpicLeft(p, view, x, y, w, size);
+		return;
+	}
 
 	const auto photoId = _peer->userpicPhotoId();
 	if (_videoPhotoId != photoId) {

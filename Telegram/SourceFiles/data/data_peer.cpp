@@ -43,6 +43,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/image/image.h"
 #include "ui/chat/chat_style.h"
 #include "ui/empty_userpic.h"
+#include "ui/userpic_view.h"
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
 #include "ui/unread_badge.h"
@@ -414,6 +415,13 @@ void PeerData::setUserpicPhoto(const MTPPhoto &data) {
 }
 
 QImage *PeerData::userpicCloudImage(Ui::PeerUserpicView &view) const {
+	if (!Ui::PeerUserpicPhotoAllowed(this)) {
+		if (view.cloud) {
+			view.cloud = nullptr;
+			view.cached = QImage();
+		}
+		return nullptr;
+	}
 	if (!_userpic.isCurrentView(view.cloud)) {
 		if (!_userpic.empty()) {
 			view.cloud = _userpic.createView();
@@ -462,7 +470,9 @@ void PeerData::paintUserpic(
 }
 
 void PeerData::loadUserpic() {
-	_userpic.load(&session(), userpicOrigin());
+	if (Ui::PeerUserpicPhotoAllowed(this)) {
+		_userpic.load(&session(), userpicOrigin());
+	}
 }
 
 bool PeerData::hasUserpic() const {
@@ -470,11 +480,13 @@ bool PeerData::hasUserpic() const {
 }
 
 Ui::PeerUserpicView PeerData::activeUserpicView() {
-	return { .cloud = _userpic.empty() ? nullptr : _userpic.activeView() };
+	return { .cloud = (Ui::PeerUserpicPhotoAllowed(this) && !_userpic.empty())
+		? _userpic.activeView()
+		: nullptr };
 }
 
 Ui::PeerUserpicView PeerData::createUserpicView() {
-	if (_userpic.empty()) {
+	if (!Ui::PeerUserpicPhotoAllowed(this) || _userpic.empty()) {
 		return {};
 	}
 	auto result = _userpic.createView();

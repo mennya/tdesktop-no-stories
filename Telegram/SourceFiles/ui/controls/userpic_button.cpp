@@ -504,7 +504,9 @@ auto UserpicButton::makeResetToOriginalAction()
 		_menu->st().menu,
 		Menu::CreateAction(
 			_menu.get(),
-			tr::lng_profile_photo_reset(tr::now),
+			PersonalUserpicOnly(_peer)
+				? tr::lng_box_delete(tr::now)
+				: tr::lng_profile_photo_reset(tr::now),
 			[=] { _resetPersonalRequests.fire({}); }),
 		nullptr,
 		nullptr);
@@ -515,7 +517,7 @@ auto UserpicButton::makeResetToOriginalAction()
 		Ui::UserpicButton::Role::Custom,
 		Ui::UserpicButton::Source::NonPersonalIfHasPersonal,
 		st::restoreUserpicIcon);
-	if (_source == Source::Custom) {
+	if (_source == Source::Custom && !PersonalUserpicOnly(_peer)) {
 		icon->showCustom(base::duplicate(_result));
 	}
 	icon->setAttribute(Qt::WA_TransparentForMouseEvents);
@@ -545,7 +547,7 @@ void UserpicButton::openPeerPhoto() {
 	}
 
 	const auto id = _peer->userpicPhotoId();
-	if (!id) {
+	if (!id || PersonalUserpicOnly(_peer)) {
 		return;
 	}
 	const auto photo = _peer->owner().photo(id);
@@ -557,6 +559,7 @@ void UserpicButton::openPeerPhoto() {
 void UserpicButton::setupPeerViewers() {
 	const auto user = _peer->asUser();
 	if (user
+		&& !PersonalUserpicOnly(user)
 		&& (_source == Source::NonPersonalPhoto
 			|| _source == Source::NonPersonalIfHasPersonal)) {
 		user->session().changes().peerFlagsValue(
@@ -804,11 +807,15 @@ void UserpicButton::processPeerPhoto() {
 	Expects(_peer != nullptr);
 
 	const auto user = _peer->asUser();
-	const auto nonPersonal = (user && _source != Source::PeerPhoto)
+	const auto personalOnly = PersonalUserpicOnly(_peer);
+	const auto nonPersonal = (!personalOnly
+		&& user
+		&& _source != Source::PeerPhoto)
 		? _peer->session().api().peerPhoto().nonPersonalPhoto(user)
 		: nullptr;
 	_showPeerUserpic = (_source == Source::PeerPhoto)
-		|| (user
+		|| (!personalOnly
+			&& user
 			&& !user->hasPersonalPhoto()
 			&& (_source == Source::NonPersonalPhoto
 				|| (_source == Source::NonPersonalIfHasPersonal
@@ -837,7 +844,7 @@ void UserpicButton::processPeerPhoto() {
 		if (_peer->userpicPhotoUnknown()) {
 			_peer->updateFullForced();
 		}
-		_canOpenPhoto = (_peer->userpicPhotoId() != 0);
+		_canOpenPhoto = !personalOnly && (_peer->userpicPhotoId() != 0);
 		updateCursor();
 		updateVideo();
 	}
@@ -917,7 +924,7 @@ void UserpicButton::updateVideo() {
 	Expects(_role == Role::OpenPhoto);
 
 	const auto id = _peer->userpicPhotoId();
-	if (!id) {
+	if (!id || PersonalUserpicOnly(_peer)) {
 		clearStreaming();
 		return;
 	}
@@ -1246,7 +1253,8 @@ void UserpicButton::prepareUserpicPixmap() {
 		? (_peer
 			&& (_peer->userpicCloudImage(_userpicView)
 				|| _role != Role::ChangePhoto))
-		: (_source == Source::NonPersonalPhoto
+		: ((_peer && PersonalUserpicOnly(_peer))
+			|| _source == Source::NonPersonalPhoto
 			|| (_source == Source::NonPersonalIfHasPersonal
 				&& hasPersonalPhotoLocally()));
 	_userpic = CreateSquarePixmap(size, [&](Painter &p) {

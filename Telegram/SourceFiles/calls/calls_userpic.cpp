@@ -93,7 +93,11 @@ void Userpic::setMuteLayout(QPoint position, int size, int stroke) {
 void Userpic::paint() {
 	auto p = QPainter(&_content);
 
-	p.drawPixmap(0, 0, _userPhoto);
+	if (Ui::PersonalUserpicOnly(_peer)) {
+		_peer->paintUserpic(p, _userpic, 0, 0, size());
+	} else {
+		p.drawPixmap(0, 0, _userPhoto);
+	}
 	if (_muted && _muteSize > 0) {
 		auto hq = PainterHighQualityEnabler(p);
 		auto pen = st::callBgOpaque->p;
@@ -130,6 +134,14 @@ int Userpic::size() const {
 void Userpic::processPhoto() {
 	_userpic = _peer->createUserpicView();
 	_peer->loadUserpic();
+	if (Ui::PersonalUserpicOnly(_peer)) {
+		_photo = nullptr;
+		_userPhoto = QPixmap();
+		_userPhotoId = 0;
+		_userPhotoFull = false;
+		_content.update();
+		return;
+	}
 	const auto photo = _peer->userpicPhotoId()
 		? _peer->owner().photo(_peer->userpicPhotoId()).get()
 		: nullptr;
@@ -147,6 +159,9 @@ void Userpic::processPhoto() {
 
 void Userpic::refreshPhoto() {
 	if (!size()) {
+		return;
+	} else if (Ui::PersonalUserpicOnly(_peer)) {
+		_content.update();
 		return;
 	}
 	const auto isNewBigPhoto = [&] {

@@ -189,6 +189,7 @@ bool UserData::updateLastseen(Data::LastseenStatus value) {
 
 // see Serialize::readPeer as well
 void UserData::setPhoto(const MTPUserProfilePhoto &photo) {
+	const auto wasPersonal = hasPersonalPhoto();
 	photo.match([&](const MTPDuserProfilePhoto &data) {
 		if (data.is_personal()) {
 			addFlags(UserDataFlag::PersonalPhoto);
@@ -203,6 +204,9 @@ void UserData::setPhoto(const MTPUserProfilePhoto &photo) {
 		removeFlags(UserDataFlag::PersonalPhoto);
 		clearUserpic();
 	});
+	if (wasPersonal != hasPersonalPhoto()) {
+		session().changes().peerUpdated(this, UpdateFlag::Photo);
+	}
 }
 
 auto UserData::unavailableReasons() const

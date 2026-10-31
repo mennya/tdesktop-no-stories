@@ -1276,6 +1276,9 @@ void TopBar::setupUserpicButton(
 	}
 
 	const auto openPhoto = [=, peer = _peer] {
+		if (Ui::PersonalUserpicOnly(peer)) {
+			return;
+		}
 		if (const auto id = peer->userpicPhotoId()) {
 			if (const auto photo = peer->owner().photo(id); photo->date()) {
 				controller->openPhoto(photo, peer);
@@ -1289,7 +1292,7 @@ void TopBar::setupUserpicButton(
 		base::unique_qptr<Ui::PopupMenu>
 	>();
 	const auto canReport = [=, peer = _peer] {
-		if (!peer->hasUserpic()) {
+		if (!peer->hasUserpic() || Ui::PersonalUserpicOnly(peer)) {
 			return false;
 		}
 		const auto user = peer->asUser();
@@ -1351,7 +1354,8 @@ void TopBar::setupUserpicButton(
 
 	const auto invalidate = [=] {
 		_userpicUniqueKey = InMemoryKey();
-		const auto hasLeftButton = _peer->userpicPhotoId() || _hasStories;
+		const auto hasLeftButton = !Ui::PersonalUserpicOnly(_peer)
+			&& (_peer->userpicPhotoId() || _hasStories);
 		_userpicButton->setAttribute(
 			Qt::WA_TransparentForMouseEvents,
 			!hasLeftButton && !hasMenu());
@@ -1508,7 +1512,8 @@ void TopBar::setupUserpicButton(
 				this,
 				st::popupMenuWithIcons);
 
-			if (_peer->userpicPhotoId()) {
+			if (_peer->userpicPhotoId()
+				&& !Ui::PersonalUserpicOnly(_peer)) {
 				(*menu)->addAction(
 					tr::lng_profile_open_photo(tr::now),
 					openPhoto,
@@ -3211,7 +3216,7 @@ void TopBar::fillTopBarMenu(
 
 void TopBar::updateVideoUserpic() {
 	const auto id = _peer->userpicPhotoId();
-	if (!id) {
+	if (!id || Ui::PersonalUserpicOnly(_peer)) {
 		_videoUserpicPlayer = nullptr;
 		return;
 	}

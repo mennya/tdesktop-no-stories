@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "ui/userpic_view.h"
 
+#include "data/data_user.h"
 #include "ui/empty_userpic.h"
 #include "ui/painter.h"
 #include "ui/image/image_prepare.h"
@@ -30,6 +31,22 @@ constexpr auto kCard2Opacity = 0.3; // Tunable.
 constexpr auto kGap = 0.02; // Tunable.
 
 } // namespace
+
+bool PersonalUserpicOnly(not_null<const PeerData*> peer) {
+	return peer->isUser()
+		&& !peer->isSelf()
+		&& !peer->isBot()
+		&& !peer->isServiceUser()
+		&& !peer->isNotificationsUser()
+		&& !peer->isRepliesChat()
+		&& !peer->isVerifyCodes()
+		&& !peer->isFreezeAppealChat()
+		&& !peer->isSavedHiddenAuthor();
+}
+
+bool PeerUserpicPhotoAllowed(not_null<const PeerData*> peer) {
+	return !PersonalUserpicOnly(peer) || peer->asUser()->hasPersonalPhoto();
+}
 
 float64 ForumUserpicRadiusMultiplier() {
 	return 0.3;

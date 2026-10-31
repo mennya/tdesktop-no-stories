@@ -90,7 +90,34 @@ reclaim its space. Voice and round-video recording shortcuts are disabled. Send,
 schedule, edit and attachment controls retain their existing behavior, as do
 incoming voice-message playback and calls.
 
+## Personal contact avatars
+
+For other ordinary people, this fork displays initials unless the account owner
+has assigned a personal contact photo through Telegram's existing **Set Profile
+Photo** action. Assigned pictures remain static. Photo assignment and deletion
+use Telegram's existing API and sync; there is no extra local avatar database.
+Deleting an assigned photo returns to initials. Changing another person's own
+photo cannot replace the displayed identity.
+
+The rule covers common avatar painting, chat and sender rows, search, profiles,
+quick contact cards, calls and newly generated Windows notification images.
+Original-photo thumbnails, avatar galleries and avatar click-to-open are hidden
+for these people; the photo editor still previews a picture the owner selects.
+The edit-contact removal action is labeled **Delete**, because it returns to
+initials instead of exposing the original. Self, bots, groups, channels and
+service icons retain their prior behavior. Photos sent in messages still open.
+
+This is a display policy, not deletion of Telegram's stored photos or cache.
+Already delivered OS notifications are not rewritten. Other Telegram clients
+still apply their own display rules, while personal contact photos continue to
+sync through Telegram.
+
 ## Verification
+
+Run `python3 Telegram/build/no-stories/test_personal_userpics.py` on a host with
+Python 3 and a C++20 `g++` compiler. It executes extracted production policy,
+cloud-view and personal-photo transition functions with synthetic dependencies;
+it does not compile the application or exercise Qt painting or the UI.
 
 Inspect `build-info.json`, verify the package against `SHA256SUMS.txt`, and test
 startup inside the dedicated VM. With production credentials, verify login,
@@ -101,3 +128,12 @@ Check an empty composer has no recording icon or blank gap, then verify text
 sending, scheduled sending, editing and attachments, plus incoming voice playback
 and calls. A successful compiler run does not establish these UI behaviors.
 Preserve the portable account directory when replacing the executable.
+
+For avatar acceptance, test cached originals after cold startup and account
+switching; assign, change and delete a personal photo; let a contact change their
+own photo; check list/search/sender/profile/quick-card/call/new-notification
+surfaces. A contact without a personal photo must show initials throughout, and
+an assigned photo must remain static. Check there is no original preview or
+avatar gallery, the editor still works, message photos still open, and self,
+bots, groups and channels retain their behavior. Use synthetic or owner-chosen
+test contacts and normal login, never imported session data.

@@ -58,6 +58,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/painter.h"
 #include "ui/vertical_list.h"
 #include "ui/ui_utility.h"
+#include "ui/userpic_view.h"
 #include "styles/style_info.h"
 
 namespace Info {
@@ -177,6 +178,10 @@ object_ptr<Ui::RpWidget> InnerWidget::setupContent(
 			user,
 			Data::PeerUpdate::Flag::FullInfo
 		) | rpl::on_next([=] {
+			if (Ui::PersonalUserpicOnly(user)) {
+				_nonPersonalView = nullptr;
+				return;
+			}
 			const auto &photos = user->session().api().peerPhoto();
 			if (const auto original = photos.nonPersonalPhoto(user)) {
 				// Preload it for the edit contact box.

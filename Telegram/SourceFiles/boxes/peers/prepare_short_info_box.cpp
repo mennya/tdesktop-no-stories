@@ -27,6 +27,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_session.h"
 #include "ui/delayed_activation.h" // PreventDelayedActivation
 #include "ui/text/format_values.h"
+#include "ui/userpic_view.h"
 #include "ui/widgets/menu/menu_add_action_callback.h"
 #include "window/window_session_controller.h"
 #include "styles/style_info.h"
@@ -323,6 +324,27 @@ void ValidatePhotoId(
 bool ProcessCurrent(
 		not_null<PeerData*> peer,
 		not_null<UserpicState*> state) {
+	if (Ui::PersonalUserpicOnly(peer)) {
+		state->userSlice = std::nullopt;
+		state->photoView = nullptr;
+		state->photoPreloads.clear();
+		state->waitingFull = false;
+		state->current.index = 0;
+		state->current.count = 1;
+		state->current.videoDocument = nullptr;
+		state->current.additionalStatus = peer->asUser()->hasPersonalPhoto()
+			? tr::lng_profile_photo_by_you(tr::now)
+			: QString();
+		state->userpicKey = peer->userpicUniqueKey(state->userpicView);
+		state->waitingLoad = Ui::PeerUserpicLoading(state->userpicView);
+		GenerateImage(state, PeerData::GenerateUserpicImage(
+			peer,
+			state->userpicView,
+			st::shortInfoWidth * style::DevicePixelRatio(),
+			0));
+		state->current.photoLoadingProgress = state->waitingLoad ? 0. : 1.;
+		return true;
+	}
 	const auto userpicPhotoId = peer->userpicPhotoId();
 	const auto userpicPhoto = (userpicPhotoId
 		&& (userpicPhotoId != PeerData::kUnknownPhotoId)
@@ -533,7 +555,7 @@ rpl::producer<QString> PrepareShortInfoStatus(not_null<PeerData*> peer) {
 PreparedShortInfoUserpic PrepareShortInfoUserpic(
 		not_null<PeerData*> peer,
 		const style::ShortInfoCover &st) {
-	auto slices = peer->isUser()
+	auto slices = (peer->isUser() && !Ui::PersonalUserpicOnly(peer))
 		? UserPhotosReversedViewer(
 			&peer->session(),
 			UserPhotosSlice::Key(peerToUser(peer->asUser()->id), PhotoId()),
@@ -550,6 +572,10 @@ PreparedShortInfoUserpic PrepareShortInfoFallbackUserpic(
 		not_null<PeerData*> peer,
 		const style::ShortInfoCover &st) {
 	Expects(peer->isUser());
+
+	if (Ui::PersonalUserpicOnly(peer)) {
+		return PrepareShortInfoUserpic(peer, st);
+	}
 
 	const auto photoId = SyncUserFallbackPhotoViewer(peer->asUser());
 	auto slices = photoId

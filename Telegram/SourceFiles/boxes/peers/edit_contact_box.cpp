@@ -691,7 +691,9 @@ void Controller::setupPhotoButtons() {
 
 	const auto resetButton = Settings::AddButtonWithIcon(
 		resetButtonWrap->entity(),
-		tr::lng_profile_photo_reset(),
+		Ui::PersonalUserpicOnly(_user)
+			? tr::lng_box_delete()
+			: tr::lng_profile_photo_reset(),
 		st::settingsButtonLight,
 		{ nullptr });
 
@@ -720,15 +722,19 @@ void Controller::setupPhotoButtons() {
 
 	resetButton->setClickedCallback([=] {
 		_window->show(Ui::MakeConfirmBox({
-			.text = tr::lng_profile_photo_reset_sure(
-				tr::now,
-				lt_user,
-				_user->shortName()),
+			.text = Ui::PersonalUserpicOnly(_user)
+				? tr::lng_delete_photo_sure(tr::now)
+				: tr::lng_profile_photo_reset_sure(
+					tr::now,
+					lt_user,
+					_user->shortName()),
 			.confirmed = [=](Fn<void()> close) {
 				_window->session().api().peerPhoto().clearPersonal(_user);
 				close();
 			},
-			.confirmText = tr::lng_profile_photo_reset_button(tr::now),
+			.confirmText = Ui::PersonalUserpicOnly(_user)
+				? tr::lng_box_delete(tr::now)
+				: tr::lng_profile_photo_reset_button(tr::now),
 		}));
 	});
 

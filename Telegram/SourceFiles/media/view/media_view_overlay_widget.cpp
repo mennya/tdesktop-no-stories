@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/crash_reports.h"
 #include "core/sandbox.h"
 #include "core/shortcuts.h"
+#include "ui/userpic_view.h"
 #include "ui/widgets/menu/menu_add_action_callback.h"
 #include "ui/widgets/menu/menu_add_action_callback_factory.h"
 #include "ui/widgets/dropdown_menu.h"
@@ -4549,6 +4550,9 @@ void OverlayWidget::show(OpenRequest request) {
 	const auto call = story ? story->call() : request.call();
 	const auto contextItem = request.item();
 	const auto contextPeer = request.peer();
+	if (photo && contextPeer && Ui::PersonalUserpicOnly(contextPeer)) {
+		return;
+	}
 	const auto contextTopicRootId = request.topicRootId();
 	const auto contextMonoforumPeerId = request.monoforumPeerId();
 	_drawButtonEnabled = request.showDrawButton();
