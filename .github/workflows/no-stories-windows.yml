@@ -154,8 +154,14 @@ jobs:
           TDESKTOP_API_HASH: ${{ secrets.TDESKTOP_API_HASH }}
         run: python TBuild/tdesktop/Telegram/build/no-stories/configure.py
 
+      - name: Verify exact Release object build selection
+        run: python TBuild/tdesktop/Telegram/build/no-stories/test_build.py --integration required
+
       - name: Verify generated Qt plugin compilation
         run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target external_qt_static_plugins_kimageformats
+
+      - name: Verify avatar UI dependency boundaries
+        run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target personal-avatar-objects
 
       - name: Build Windows x64 Release
         run: python TBuild/tdesktop/Telegram/build/no-stories/build.py

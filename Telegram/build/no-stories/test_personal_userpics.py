@@ -29,7 +29,7 @@ def main() -> None:
     args = parser.parse_args()
     here = Path(__file__).resolve().parent
     sources = here.parents[1] / "SourceFiles"
-    policy = (sources / "ui/userpic_view.cpp").read_text(encoding="utf-8")
+    policy = (sources / "ui/peer/userpic_policy.cpp").read_text(encoding="utf-8")
     peer = (sources / "data/data_peer.cpp").read_text(encoding="utf-8")
     user = (sources / "data/data_user.cpp").read_text(encoding="utf-8")
     functions = ["namespace Ui {", *[

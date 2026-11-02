@@ -54,6 +54,14 @@ limit. It first compiles the Qt image-format plugin target, including generated
 MOC sources, before building the remaining Telegram targets. Dependency locations
 and cache keys are independent of this application-output path handling.
 
+Avatar policy definitions live in the `Telegram` application target, where the
+model and MTProto PCH prerequisites exist. The low-level `td_ui` userpic renderer
+must not include `data_user.h`. Before the full app build, CI compiles the
+renderer and policy objects separately using their real generated Release
+commands. A required small Ninja Multi-Config fixture first verifies exact-object
+selection and confirms that Debug and unrelated sources remain unbuilt. This
+checks the target/PCH boundary missed by the model-only avatar tests.
+
 The portable ZIP includes `TelegramForcePortable`, which upstream's
 `CheckPortableVersionFolder()` uses for isolated account storage. Extract the
 whole ZIP into its own writable folder. Keep that directory beside `Telegram.exe`.
