@@ -10,7 +10,13 @@
     "sources": 1
   },
   "last_status": "ok",
-  "outbox": {},
+  "outbox": {
+    "release:v7.3.5:bbc88f61f293d3101b086ddc88d7f7b0b783890f255b095e3616c9c21a7a74f1": {
+      "at": "2026-11-04T15:57:39+00:00",
+      "status": "sending",
+      "url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.5"
+    }
+  },
   "reviewed": {
     "release:v7.3.3": "aa16746644b01f1a986bb0d08d53c79effffed2ca827af53d792bc0a2d48c095"
   },
