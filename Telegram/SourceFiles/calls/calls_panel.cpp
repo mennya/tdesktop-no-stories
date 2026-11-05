@@ -168,7 +168,9 @@ Panel::Panel(not_null<Call*> call)
 	initConferenceInvite();
 	initLayout();
 	initMediaDeviceToggles();
-	showAndActivate();
+	if (!_call->incomingNotificationsSuppressed()) {
+		showAndActivate();
+	}
 }
 
 Panel::~Panel() = default;
@@ -238,8 +240,13 @@ void Panel::toggleFullScreen() {
 }
 
 void Panel::replaceCall(not_null<Call*> call) {
+	const auto wasSuppressed = _call
+		&& _call->incomingNotificationsSuppressed();
 	reinitWithCall(call);
 	updateControlsGeometry();
+	if (wasSuppressed && !call->incomingNotificationsSuppressed()) {
+		showAndActivate();
+	}
 }
 
 void Panel::savePanelGeometry() {
@@ -804,6 +811,14 @@ void Panel::reinitWithCall(Call *call) {
 		}
 	}, _callLifetime);
 
+	_call->incomingNotificationsSuppressedValue(
+	) | rpl::on_next([=](bool suppressed) {
+		if (suppressed) {
+			window()->hide();
+			_window->togglePowerSaveBlocker(false);
+		}
+	}, _callLifetime);
+
 	_call->stateValue(
 	) | rpl::on_next([=](State state) {
 		stateChanged(state);
@@ -1066,7 +1081,9 @@ rpl::lifetime &Panel::lifetime() {
 void Panel::initGeometry() {
 	window()->setGeometry(panelGeometry());
 	window()->setMinimumSize({ st::callWidthMin, st::callHeightMin });
-	window()->show();
+	if (!_call->incomingNotificationsSuppressed()) {
+		window()->show();
+	}
 	updateControlsGeometry();
 
 	_geometryLifetime = window()->geometryValue(
@@ -1776,7 +1793,9 @@ void Panel::stateChanged(State state) {
 
 	const auto isBusy = (state == State::Busy);
 	const auto isWaitingUser = (state == State::WaitingUserConfirmation);
-	_window->togglePowerSaveBlocker(!isBusy && !isWaitingUser);
+	_window->togglePowerSaveBlocker(!isBusy
+		&& !isWaitingUser
+		&& !_call->incomingNotificationsSuppressed());
 
 	if (!_rateCall
 		&& _call->ratingRequested()

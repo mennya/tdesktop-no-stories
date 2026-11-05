@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "mtproto/mtproto_config.h"
 #include "lang/lang_keys.h"
 #include "core/shortcuts.h"
@@ -36,6 +37,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text.h"
 #include "ui/text/text_options.h"
 #include "ui/painter.h"
+#include "ui/rect.h"
 #include "ui/unread_badge.h"
 #include "ui/unread_counter_format.h"
 #include "ui/controls/button_context_menu.h"
@@ -68,6 +70,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "api/api_chat_participants.h"
 #include "styles/style_window.h"
 #include "styles/style_dialogs.h"
+#include "styles/style_dialogs_layout.h"
 #include "styles/style_chat.h"
 #include "styles/style_info.h"
 
@@ -141,6 +144,15 @@ TopBarWidget::TopBarWidget(
 	Lang::Updated(
 	) | rpl::on_next([=] {
 		refreshLang();
+	}, lifetime());
+
+	session().strictMute().changes(
+	) | rpl::on_next([=](PeerId peer) {
+		const auto history = _activeChat.key.owningHistory();
+		if (history && history->peer->id == peer) {
+			refreshStrictMute();
+			update();
+		}
 	}, lifetime());
 
 	_forward->setClickedCallback([=] { _forwardSelection.fire({}); });
@@ -301,7 +313,17 @@ void TopBarWidget::connectingAnimationCallback() {
 }
 
 void TopBarWidget::refreshLang() {
+	refreshStrictMute();
 	InvokeQueued(this, [this] { updateControlsGeometry(); });
+}
+
+void TopBarWidget::refreshStrictMute() {
+	const auto history = _activeChat.key.owningHistory();
+	const auto text = history && Main::IsStrictMuted(history->peer)
+		? tr::lng_strict_mute_label(tr::now)
+		: QString();
+	setToolTip(text);
+	setAccessibleDescription(text);
 }
 
 void TopBarWidget::call(Calls::StartOutgoingCallArgs args) {
@@ -580,6 +602,44 @@ void TopBarWidget::paintTopBar(Painter &p) {
 	const auto folder = _activeChat.key.folder();
 	const auto topic = _activeChat.key.topic();
 	const auto namePeer = titleNamePeer();
+	const auto strictMuted = peer && Main::IsStrictMuted(peer);
+	const auto strictMarkerWidth = st::dialogsSearchTagLocked.width()
+		+ 2 * st::lineWidth
+		+ st::dialogsMuteIcon.icon.width()
+		+ st::dialogsMuteIconSkip;
+	const auto strictMarkerClip = style::rtlrect(
+		QRect(nameleft, 0, std::max(namewidth, 0), height()),
+		width());
+	if (strictMuted) {
+		namewidth = std::max(namewidth - strictMarkerWidth, 0);
+	}
+	const auto paintStrictMarker = [&](
+			int textWidth,
+			int top,
+			int fontHeight,
+			int badgeWidth = 0) {
+		if (!strictMuted) {
+			return;
+		}
+		p.save();
+		p.setClipRect(strictMarkerClip, Qt::IntersectClip);
+		auto left = nameleft + std::min(textWidth, namewidth)
+			+ badgeWidth + st::dialogsMuteIconSkip;
+		st::dialogsSearchTagLocked.paint(
+			p,
+			left,
+			top + (fontHeight - st::dialogsSearchTagLocked.height()) / 2,
+			width(),
+			st::historyStatusFg->c);
+		left += st::dialogsSearchTagLocked.width() + 2 * st::lineWidth;
+		st::dialogsMuteIcon.icon.paint(
+			p,
+			left,
+			top + (fontHeight - st::dialogsMuteIcon.icon.height()) / 2,
+			width(),
+			st::historyStatusFg->c);
+		p.restore();
+	};
 	if (topic && _activeChat.section == Section::Replies) {
 		p.setPen(st::dialogsNameFg);
 		topic->chatListNameText().drawElided(
@@ -587,6 +647,10 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			nameleft,
 			nametop,
 			namewidth);
+		paintStrictMarker(
+			topic->chatListNameText().maxWidth(),
+			nametop,
+			st::semiboldFont->height);
 
 		p.setFont(st::dialogsTextFont);
 		if (!paintConnectingState(p, nameleft, statustop, width())
@@ -635,21 +699,24 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			p.setOpacity(opacity);
 			p.setPen(st::dialogsNameFg);
 			p.setFont(st::historySavedFont);
-			p.drawTextLeft(
-				nameleft,
-				(height() - st::historySavedFont->height) / 2,
-				width(),
-				text);
+			const auto titleTop = (height() - st::historySavedFont->height) / 2;
+			p.drawTextLeft(nameleft, titleTop, width(), text);
+			paintStrictMarker(textWidth, titleTop, st::historySavedFont->height);
 			p.setOpacity(1.);
 		}
 	} else if (_activeChat.section == Section::Replies) {
 		p.setPen(st::dialogsNameFg);
 		p.setFont(st::semiboldFont);
+		const auto text = tr::lng_manage_discussion_group(tr::now);
 		p.drawTextLeft(
 			nameleft,
 			nametop,
 			width(),
-			tr::lng_manage_discussion_group(tr::now));
+			strictMuted ? st::semiboldFont->elided(text, namewidth) : text);
+		paintStrictMarker(
+			st::semiboldFont->width(text),
+			nametop,
+			st::semiboldFont->height);
 
 		p.setFont(st::dialogsTextFont);
 		if (!paintConnectingState(p, statusleft, statustop, width())
@@ -705,6 +772,9 @@ void TopBarWidget::paintTopBar(Painter &p) {
 				Window::GifPauseReason::Any),
 		});
 		namewidth -= badgeWidth;
+		if (strictMuted) {
+			namewidth = std::max(namewidth, 0);
+		}
 
 		p.setPen(st::dialogsNameFg);
 		_title.draw(p, {
@@ -712,6 +782,11 @@ void TopBarWidget::paintTopBar(Painter &p) {
 			.availableWidth = namewidth,
 			.elisionLines = 1,
 		});
+		paintStrictMarker(
+			_title.maxWidth(),
+			nametop,
+			st::msgNameStyle.font->height,
+			badgeWidth);
 
 		p.setFont(st::dialogsTextFont);
 		if (!paintConnectingState(p, statusleft, statustop, width())
@@ -901,6 +976,7 @@ void TopBarWidget::setActiveChat(
 		!= activeChat.key.history());
 
 	_activeChat = activeChat;
+	refreshStrictMute();
 	_titlePeerText.clear();
 	_back->clearState();
 	update();

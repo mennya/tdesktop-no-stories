@@ -62,6 +62,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mainwidget.h"
 #include "mainwindow.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "window/notifications_manager.h"
 #include "window/window_session_controller.h"
 #include "calls/calls_instance.h"
@@ -2829,12 +2830,18 @@ Dialogs::UnreadState History::chatListUnreadState() const {
 }
 
 Dialogs::BadgesState History::chatListBadgesState() const {
+	if (Main::IsStrictMuted(peer)) {
+		return {};
+	}
+
 	const auto channel = peer->asChannel();
 	if (channel && channel->isCommunity()) {
 		if (const auto info = channel->communityInfo()) {
 			auto state = Dialogs::UnreadState();
 			for (const auto &history : info->histories()) {
-				state += history->chatListUnreadState();
+				if (!Main::IsStrictMuted(history->peer)) {
+					state += history->chatListUnreadState();
+				}
 			}
 			return Dialogs::BadgesForUnread(
 				state,

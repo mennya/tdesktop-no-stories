@@ -65,6 +65,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "main/main_session_settings.h"
 #include "menu/menu_mute.h"
 #include "menu/menu_ttl_validator.h"
@@ -240,6 +241,41 @@ void SetActionText(not_null<QAction*> action, rpl::producer<QString> &&text) {
 	) | rpl::on_next([=](const QString &actionText) {
 		action->setText(actionText);
 	}, *lifetime);
+}
+
+void PeerMenuAddStrictMuteAction(
+		not_null<Window::SessionController*> controller,
+		not_null<PeerData*> peer,
+		const PeerMenuCallback &addAction) {
+	if (!Main::CanStrictMute(peer)) {
+		return;
+	}
+	const auto enabled = Main::IsStrictMuted(peer);
+	const auto label = enabled
+		? tr::lng_strict_mute_disable(tr::now)
+		: tr::lng_strict_mute_enable(tr::now);
+	const auto show = controller->uiShow();
+	const auto weak = base::make_weak(&peer->session());
+	const auto id = peer->id;
+	addAction(label, [=] {
+		if (!weak) {
+			return;
+		}
+		show->show(Ui::MakeConfirmBox({
+			.text = enabled
+				? tr::lng_strict_mute_disable_confirm(tr::now)
+				: tr::lng_strict_mute_enable_confirm(tr::now),
+			.confirmed = [=](Fn<void()> close) {
+				if (weak) {
+					weak->strictMute().set(weak->data().peer(id), !enabled);
+				}
+				close();
+			},
+			.confirmText = label,
+			.title = peer->name(),
+			.cancelOnEnter = true,
+		}));
+	}, enabled ? &st::menuIconUnmute : &st::menuIconMute);
 }
 
 void PeerMenuAddMuteSubmenuAction(
@@ -588,11 +624,16 @@ void Filler::addTogglePin() {
 void Filler::addToggleMuteSubmenu(bool addSeparator) {
 	if (!_thread
 		|| _thread->peer()->isSelf()
-		|| _thread->asSublist()
-		|| (_thread->asHistory() && _thread->asHistory()->isForum())) {
+		|| _thread->asSublist()) {
 		return;
 	}
-	PeerMenuAddMuteSubmenuAction(_controller, _thread, _addAction);
+	PeerMenuAddStrictMuteAction(
+		_controller,
+		_thread->owningHistory()->peer,
+		_addAction);
+	if (!_thread->asHistory() || !_thread->asHistory()->isForum()) {
+		PeerMenuAddMuteSubmenuAction(_controller, _thread, _addAction);
+	}
 	if (addSeparator) {
 		_addAction(PeerMenuCallback::Args{ .isSeparator = true });
 	}

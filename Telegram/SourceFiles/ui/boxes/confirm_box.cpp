@@ -79,6 +79,7 @@ void ConfirmBox(not_null<Ui::GenericBox*> box, ConfirmBoxArgs &&args) {
 			v::text::take_marked(std::move(args.confirmText)));
 	}
 
+	const auto cancelOnEnter = args.cancelOnEnter;
 	box->events(
 	) | rpl::on_next([=](not_null<QEvent*> e) {
 		if ((e->type() != QEvent::KeyPress) || !confirmButton) {
@@ -87,7 +88,11 @@ void ConfirmBox(not_null<Ui::GenericBox*> box, ConfirmBoxArgs &&args) {
 		const auto k = static_cast<QKeyEvent*>(e.get());
 		if (!k->isAutoRepeat()
 			&& (k->key() == Qt::Key_Enter || k->key() == Qt::Key_Return)) {
-			confirmButton->clicked(Qt::KeyboardModifiers(), Qt::LeftButton);
+			if (cancelOnEnter) {
+				box->closeBox();
+			} else {
+				confirmButton->clicked(Qt::KeyboardModifiers(), Qt::LeftButton);
+			}
 		}
 	}, box->lifetime());
 

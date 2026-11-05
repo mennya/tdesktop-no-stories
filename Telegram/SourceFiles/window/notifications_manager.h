@@ -203,6 +203,13 @@ private:
 		not_null<HistoryItem*> item,
 		base::flat_map<SentNotificationId, crl::time> &already) const;
 
+	void registerSession(not_null<Main::Session*> session);
+	[[nodiscard]] uint64 strictMuteRevision(
+		not_null<const PeerData*> peer) const;
+	void trackGroupedItem(not_null<HistoryItem*> item);
+	[[nodiscard]] bool groupedMatches(
+		Fn<bool(not_null<History*>)> predicate) const;
+	void clearGrouped();
 	void showNext();
 	void showGrouped();
 	void ensureSoundCreated();
@@ -245,12 +252,17 @@ private:
 		DocumentId,
 		std::unique_ptr<Media::Audio::Track>> _customSoundTracks;
 
+	base::flat_set<not_null<Main::Session*>> _watchedSessions;
+	base::flat_map<std::pair<uint64, PeerId>, uint64> _strictMuteRevisions;
+
 	base::flat_map<
 		not_null<Data::ForumTopic*>,
 		rpl::lifetime> _watchedTopics;
 	base::flat_map<
 		not_null<Data::SavedSublist*>,
 		rpl::lifetime> _watchedSublists;
+
+	base::flat_set<std::pair<uint64, PeerId>> _groupedHistories;
 
 	int _lastForwardedCount = 0;
 	uint64 _lastHistorySessionId = 0;

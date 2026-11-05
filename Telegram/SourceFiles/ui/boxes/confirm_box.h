@@ -39,6 +39,8 @@ struct ConfirmBoxArgs {
 	// If strict cancel is set the cancel.callback() is only called
 	// if the cancel button was pressed.
 	bool strictCancel = false;
+	// A stray Enter cancels sensitive toggles; confirmation needs its button.
+	bool cancelOnEnter = false;
 };
 
 void ConfirmBox(not_null<GenericBox*> box, ConfirmBoxArgs &&args);

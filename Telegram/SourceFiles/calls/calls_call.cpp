@@ -23,6 +23,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "media/audio/media_audio_track.h"
 #include "mtproto/mtproto_config.h"
 #include "mtproto/mtproto_dh_utils.h"
@@ -252,6 +253,7 @@ Call::Call(
 , _videoOutgoing(
 	std::make_unique<Webrtc::VideoTrack>(
 		StartVideoState(video))) {
+	setupIncomingNotifications();
 	if (_type == Type::Outgoing) {
 		setState(State::WaitingUserConfirmation);
 	} else {
@@ -302,6 +304,7 @@ Call::Call(
 , _videoOutgoing(
 	std::make_unique<Webrtc::VideoTrack>(
 		StartVideoState(video))) {
+	setupIncomingNotifications();
 	startWaitingTrack();
 	setupOutgoingVideo();
 }
@@ -456,6 +459,7 @@ void Call::acceptConferenceInvite() {
 	if (_state.current() != State::WaitingIncoming) {
 		return;
 	}
+	_incomingNotificationsSuppressed = false;
 	setState(State::ExchangingKeys);
 	const auto limit = 5;
 	const auto messageId = _conferenceInviteMsgId;
@@ -494,6 +498,7 @@ void Call::actuallyAnswer() {
 			return;
 		}
 	}
+	_incomingNotificationsSuppressed = false;
 	setState(State::ExchangingKeys);
 	if (_gb.empty()) {
 		_answerAfterDhConfigReceived = true;
@@ -676,6 +681,9 @@ void Call::showRatingBox() {
 	Expects(_ratingRequested);
 
 	_ratingRequested = false;
+	if (_incomingNotificationsSuppressed.current()) {
+		return;
+	}
 
 	const auto window = Core::App().windowFor(::Window::SeparateId(_user));
 	const auto session = &_user->session();
@@ -740,6 +748,7 @@ void Call::redial() {
 	}
 	Assert(_instance == nullptr);
 	_type = Type::Outgoing;
+	_incomingNotificationsSuppressed = false;
 	setState(State::Requesting);
 	_answerAfterDhConfigReceived = false;
 	startWaitingTrack();
@@ -752,7 +761,26 @@ QString Call::getDebugLog() const {
 		: QString();
 }
 
+void Call::setupIncomingNotifications() {
+	if (_type != Type::Incoming) {
+		return;
+	}
+	_incomingNotificationsSuppressed = Main::IsStrictMuted(_user);
+	_user->session().strictMute().changes() | rpl::on_next([=](PeerId peerId) {
+		if (peerId == _user->id
+			&& isIncomingWaiting()
+			&& Main::IsStrictMuted(_user)) {
+			// Keep this attempt silent even if the chat is unmuted later.
+			_waitingTrack.reset();
+			_incomingNotificationsSuppressed = true;
+		}
+	}, lifetime());
+}
+
 void Call::startWaitingTrack() {
+	if (_incomingNotificationsSuppressed.current()) {
+		return;
+	}
 	_waitingTrack = Media::Audio::Current().createTrack();
 	const auto trackFileName = Core::App().settings().getSoundPath(
 		(_type == Type::Outgoing)
@@ -1422,10 +1450,13 @@ void Call::setState(State state) {
 			_startTime = crl::now();
 			break;
 		case State::ExchangingKeys:
-			_delegate->callPlaySound(Delegate::CallSound::Connecting);
+			if (!_incomingNotificationsSuppressed.current()) {
+				_delegate->callPlaySound(Delegate::CallSound::Connecting);
+			}
 			break;
 		case State::Ended:
-			if (was != State::WaitingUserConfirmation) {
+			if (was != State::WaitingUserConfirmation
+				&& !_incomingNotificationsSuppressed.current()) {
 				_delegate->callPlaySound(Delegate::CallSound::Ended);
 			}
 			[[fallthrough]];
@@ -1433,11 +1464,15 @@ void Call::setState(State state) {
 			_delegate->callFinished(this);
 			break;
 		case State::Failed:
-			_delegate->callPlaySound(Delegate::CallSound::Ended);
+			if (!_incomingNotificationsSuppressed.current()) {
+				_delegate->callPlaySound(Delegate::CallSound::Ended);
+			}
 			_delegate->callFailed(this);
 			break;
 		case State::Busy:
-			_delegate->callPlaySound(Delegate::CallSound::Busy);
+			if (!_incomingNotificationsSuppressed.current()) {
+				_delegate->callPlaySound(Delegate::CallSound::Busy);
+			}
 			_discardByTimeoutTimer.cancel();
 			break;
 		}
@@ -1667,7 +1702,7 @@ void Call::handleRequestError(const QString &error) {
 			"{user}",
 			_user->name())
 		: error;
-	if (!inform.isEmpty()) {
+	if (!inform.isEmpty() && !_incomingNotificationsSuppressed.current()) {
 		if (const auto window = Core::App().windowFor(
 				::Window::SeparateId(_user))) {
 			window->show(Ui::MakeInformBox(inform));
@@ -1686,7 +1721,7 @@ void Call::handleControllerError(const QString &error) {
 		: (error == u"ERROR_AUDIO_IO"_q)
 		? tr::lng_call_error_audio_io(tr::now)
 		: QString();
-	if (!inform.isEmpty()) {
+	if (!inform.isEmpty() && !_incomingNotificationsSuppressed.current()) {
 		if (const auto window = Core::App().windowFor(
 				::Window::SeparateId(_user))) {
 			window->show(Ui::MakeInformBox(inform));

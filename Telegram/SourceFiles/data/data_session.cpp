@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 
 #include "main/main_session.h"
+#include "data/data_unread_value.h"
 #include "main/main_session_settings.h"
 #include "main/main_app_config.h"
 #include "apiwrap.h"
@@ -3629,11 +3630,11 @@ HistoryItem *Session::addNewMessage(
 }
 
 int Session::unreadBadge() const {
-	return computeUnreadBadge(_chatsList.unreadState());
+	return computeUnreadBadge(_chatsList.attentionUnreadState());
 }
 
 int Session::unreadWithMentionsBadge() const {
-	auto state = _chatsList.unreadState();
+	auto state = _chatsList.attentionUnreadState();
 	if (state.mentions) {
 		state.messages -= state.mentions;
 	}
@@ -3641,19 +3642,19 @@ int Session::unreadWithMentionsBadge() const {
 }
 
 bool Session::unreadBadgeMuted() const {
-	return computeUnreadBadgeMuted(_chatsList.unreadState());
+	return computeUnreadBadgeMuted(_chatsList.attentionUnreadState());
 }
 
 bool Session::unreadWithMentionsBadgeMuted() const {
-	const auto state = _chatsList.unreadState();
+	const auto state = _chatsList.attentionUnreadState();
 	return !state.mentions && computeUnreadBadgeMuted(state);
 }
 
 int Session::unreadBadgeIgnoreOne(Dialogs::Key key) const {
 	const auto remove = (key && key.entry()->inChatList())
-		? key.entry()->chatListUnreadState()
+		? BadgeUnreadState(key)
 		: Dialogs::UnreadState();
-	return computeUnreadBadge(_chatsList.unreadState() - remove);
+	return computeUnreadBadge(_chatsList.attentionUnreadState() - remove);
 }
 
 bool Session::unreadBadgeMutedIgnoreOne(Dialogs::Key key) const {
@@ -3661,9 +3662,9 @@ bool Session::unreadBadgeMutedIgnoreOne(Dialogs::Key key) const {
 		return false;
 	}
 	const auto remove = (key && key.entry()->inChatList())
-		? key.entry()->chatListUnreadState()
+		? BadgeUnreadState(key)
 		: Dialogs::UnreadState();
-	return computeUnreadBadgeMuted(_chatsList.unreadState() - remove);
+	return computeUnreadBadgeMuted(_chatsList.attentionUnreadState() - remove);
 }
 
 rpl::producer<> Session::unreadBadgeChanges() const {

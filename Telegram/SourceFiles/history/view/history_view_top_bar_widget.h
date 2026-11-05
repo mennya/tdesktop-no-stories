@@ -151,6 +151,7 @@ private:
 	void refreshInfoButton();
 	void updateInfoButtonVisibility();
 	void refreshLang();
+	void refreshStrictMute();
 	void updateSearchVisibility();
 	void updateSearchJumpToDateVisibility();
 	[[nodiscard]] bool searchJumpToDateFits() const;

@@ -1549,6 +1549,8 @@ PRIVATE
     main/main_domain.h
     main/main_session.cpp
     main/main_session.h
+    main/main_strict_mute.cpp
+    main/main_strict_mute.h
     main/main_session_settings.cpp
     main/main_session_settings.h
     main/session/send_as_peers.cpp

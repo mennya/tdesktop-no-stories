@@ -9335,3 +9335,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 // Local fork UI.
 "lng_fork_story_hidden" = "Story hidden";
+
+"lng_strict_mute_label" = "Strict mute";
+"lng_strict_mute_enable" = "Enable strict mute…";
+"lng_strict_mute_disable" = "Disable strict mute…";
+"lng_strict_mute_enable_confirm" = "Silence this entire chat, including topics, on this device? Notifications, incoming call alerts and all unread badges will be hidden. New messages and drafts will not move it up the list. Messages and read status are preserved.";
+"lng_strict_mute_disable_confirm" = "Restore normal attention for this chat? Unread badges and current list order will return. Old notifications and already silenced incoming calls will not replay. Your regular Telegram notification settings still apply.";

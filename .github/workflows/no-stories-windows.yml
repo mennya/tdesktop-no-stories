@@ -32,7 +32,26 @@ env:
   CMAKE_BUILD_PARALLEL_LEVEL: '4'
 
 jobs:
+  regression-models:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Check extracted production behavior and object selection
+        run: |
+          python3 Telegram/build/no-stories/test_personal_userpics.py
+          python3 Telegram/build/no-stories/test_strict_mute_order.py
+          python3 Telegram/build/no-stories/test_strict_mute_unread.py
+          python3 Telegram/build/no-stories/test_strict_mute_calls.py
+          python3 Telegram/build/no-stories/test_strict_mute_notifications.py
+          python3 Telegram/build/no-stories/test_build.py --integration required
+
   windows:
+    needs: regression-models
     runs-on: windows-2022
     timeout-minutes: 360
     defaults:
@@ -162,6 +181,9 @@ jobs:
 
       - name: Verify avatar UI dependency boundaries
         run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target personal-avatar-objects
+
+      - name: Verify strict-mute compile boundaries
+        run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target strict-mute-objects
 
       - name: Build Windows x64 Release
         run: python TBuild/tdesktop/Telegram/build/no-stories/build.py

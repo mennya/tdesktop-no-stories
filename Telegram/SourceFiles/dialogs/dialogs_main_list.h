@@ -44,6 +44,8 @@ public:
 	void updateCloudUnread(const MTPDdialogFolder &data);
 	[[nodiscard]] bool cloudUnreadKnown() const;
 	[[nodiscard]] UnreadState unreadState() const;
+	// Display-only projection; raw accounting and read cursors stay unchanged.
+	[[nodiscard]] UnreadState attentionUnreadState() const;
 	[[nodiscard]] rpl::producer<UnreadState> unreadStateChanges() const;
 
 	[[nodiscard]] not_null<IndexedList*> indexed();
@@ -60,6 +62,7 @@ private:
 
 	inline auto unreadStateChangeNotifier(bool notify);
 
+	not_null<Main::Session*> _session;
 	FilterId _filterId = 0;
 	IndexedList _all;
 	PinnedList _pinned;

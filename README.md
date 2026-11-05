@@ -1,13 +1,65 @@
 # Telegram Desktop — No Stories
 
-Personal Windows x64 fork of Telegram Desktop, based on upstream v7.3.3.
-It hides Stories throughout the client and the reminder to set your birthday.
-Shared Stories use a non-interactive placeholder; ordinary messages, media and
-live broadcasts remain available. Official auto-updates are disabled.
+Personal Windows x64 fork of Telegram Desktop, based on upstream **v7.3.5**.
+It keeps messaging available while reducing visual distractions and allowing
+selected chats to stay quiet.
 
-See [fork build and packaging instructions](docs/building-no-stories.md).
-The installer and portable package keep their account data separate from the
-official client. Builds are unsigned and require your own Telegram API credentials.
+## What this fork changes
+
+- **No Stories:** hides the story strip, rings, profile sections and entry points.
+  Forwarded or shared stories become a non-interactive placeholder; story links
+  do not produce a story preview or open the story viewer. Ordinary messages,
+  attachments and live broadcasts remain available.
+- **No birthday setup reminder:** hides the prompt to add your own birthday.
+  Other people's birthdays and normal profile editing remain available.
+- **No Windows unread indicators:** removes unread numbers, muted grey badges
+  and the monochrome dot from the tray and taskbar. Tray tooltips, window titles
+  and active-chat taskbar labels also omit unread counts.
+- **Still emoji beside names:** name emoji and emoji-status decorations use a
+  static first frame. Emoji, stickers and reactions inside messages retain their
+  normal animations.
+- **No recording controls:** removes the microphone and round-video buttons from
+  empty composers and disables their recording shortcuts. Text sending, editing,
+  scheduling, attachments and playback of received voice messages remain.
+- **Stable contact avatars:** other ordinary people show initials unless you set
+  a personal contact photo. Your chosen picture remains static and syncs through
+  Telegram. Deleting it returns to initials. Original profile photos, galleries
+  and avatar click-to-open are hidden for these contacts. Your own avatar, bots,
+  groups, channels and service icons keep their existing behavior; photos in
+  messages still open normally.
+- **Strict mute:** an optional local setting for a private chat or whole group,
+  with confirmation both when enabling and disabling it.
+  It suppresses that chat's notifications, sounds, attention badges, mentions,
+  reaction alerts and incoming-call popups/ringing. Calls are not automatically
+  declined. Its unread messages do not contribute to displayed chat, folder or
+  account counters, and incoming activity does not move its anchored position in
+  the chat list. A small static lock-and-mute mark appears beside the name or
+  over the avatar in the icon-only list, even when Telegram's optional ordinary
+  mute icon is disabled.
+
+Strict mute is stored separately for each account on this device; it does not
+change server mute settings, read receipts or another client's behavior. Messages
+remain available when you open the chat. Turning strict mute off restores the
+actual unread counts and normal sorting without replaying old alerts. Ordinary
+chat counters and notifications retain their normal behavior outside strict mute.
+If Telegram has not yet supplied enough data to exclude a strict-muted chat from
+the archive total, the unresolved archive badge stays hidden until it can be
+computed accurately; unrelated chats keep their own counters.
+
+## Installation and updates
+
+Use this fork's portable ZIP or installer. They keep account data in a separate
+`TelegramForcePortable` directory, independently of an official Telegram install.
+Do not install over the official client or import its session files.
+
+Packages are **unsigned** and official automatic updates are disabled. To update,
+close this fork completely, install the new fork package into the same location
+or replace the portable program files, and preserve `TelegramForcePortable`.
+Building production packages requires your own Telegram API credentials.
+
+See [build, packaging and verification instructions](docs/building-no-stories.md).
+The feature list describes the intended behavior; a compiler pass alone does not
+establish interactive acceptance of a new build.
 
 The original project's documentation follows. Its download links are official
 upstream builds and do not contain this fork's changes.

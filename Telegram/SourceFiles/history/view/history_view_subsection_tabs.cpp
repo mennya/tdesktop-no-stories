@@ -25,6 +25,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "main/main_session_settings.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "ui/controls/subsection_tabs_slider_reorder.h"
 #include "ui/controls/subsection_tabs_slider.h"
 #include "ui/dynamic_image.h"
@@ -894,7 +895,7 @@ void SubsectionTabs::refreshSlice() {
 		const auto topic = thread->asTopic();
 		const auto sublist = thread->asSublist();
 		auto badges = [&] {
-			if (!topic && !sublist) {
+			if (Main::IsStrictMuted(thread->peer()) || (!topic && !sublist)) {
 				return Dialogs::BadgesState();
 			} else if (thread->chatListUnreadState().known) {
 				return thread->chatListBadgesState();

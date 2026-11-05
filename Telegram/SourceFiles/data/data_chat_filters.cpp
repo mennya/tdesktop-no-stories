@@ -22,6 +22,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/ui_utility.h"
 #include "ui/chat/more_chats_bar.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "main/main_app_config.h"
 #include "apiwrap.h"
 
@@ -366,6 +367,12 @@ bool ChatFilter::contains(
 	if (channel && channel->isCommunity()) {
 		// A community never matches a filter by chat type (it is neither a
 		// group nor a channel); it can only be included explicitly by id.
+		return _always.contains(history);
+	}
+	if ((_flags & (Flag::NoRead | Flag::NoMuted))
+		&& Main::IsStrictMuted(history->peer)) {
+		// Explicit folder membership survives; automatic unread matching,
+		// including fakeUnreadWhileOpened, must not attract attention.
 		return _always.contains(history);
 	}
 	const auto state = (_flags & (Flag::NoMuted | Flag::NoRead))

@@ -28,6 +28,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/view/history_view_item_preview.h"
 #include "history/view/history_view_chat_section.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "base/unixtime.h"
 #include "ui/painter.h"
 #include "ui/color_int_conversion.h"
@@ -893,8 +894,9 @@ void ForumTopic::setMuted(bool muted) {
 	if (this->muted() == muted) {
 		return;
 	}
-	const auto state = chatListBadgesState();
-	const auto notify = state.unread || state.reaction;
+	const auto state = chatListUnreadState();
+	const auto notify = state.messages || state.chats || state.marks
+		|| state.reactions || state.polls || state.mentions;
 	const auto notifier = unreadStateChangeNotifier(notify);
 	Thread::setMuted(muted);
 	session().changes().topicUpdated(this, UpdateFlag::Notifications);
@@ -911,6 +913,10 @@ Dialogs::UnreadState ForumTopic::chatListUnreadState() const {
 }
 
 Dialogs::BadgesState ForumTopic::chatListBadgesState() const {
+	if (Main::IsStrictMuted(peer())) {
+		return {};
+	}
+
 	auto result = Dialogs::BadgesForUnread(
 		chatListUnreadState(),
 		Dialogs::CountInBadge::Messages,

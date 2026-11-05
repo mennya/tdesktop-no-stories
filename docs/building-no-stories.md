@@ -1,14 +1,14 @@
 # Building Telegram No Stories for Windows
 
-This fork builds Windows x64 with Qt 6 from the approved upstream stable tag.
+This fork builds Windows x64 with Qt 6 from upstream stable tag **v7.3.5**.
 The `No Stories Windows x64` workflow produces a Release executable, a portable
 ZIP, an unsigned installer and SHA-256 checksums. The first dependency build can
 take several hours. Later runs reuse separate build-tool, library and Qt caches.
 The workflow reports free disk space and removes disposable dependency object and
 debug-symbol files before caching and building the app. Qt installed object
 libraries and generated sources remain intact. The standard hosted runner has
-limited storage; the first real run must establish whether it is sufficient.
-No paid runner or cache-storage increase is enabled automatically.
+limited storage, so these cleanup and cache boundaries must be preserved. No
+paid runner or cache-storage increase is enabled automatically.
 
 ## Build modes
 
@@ -83,9 +83,9 @@ run for this fork branch.
 This personal fork keeps the Windows tray and taskbar icons free of unread
 numbers, muted grey badges and the monochrome unread dot. Tray tooltips and
 window titles also omit unread counts, including active-chat counts shown by
-taskbar labels and Alt-Tab. Chat-list counters and unread state are preserved.
-Popup notifications, sounds and the separate taskbar attention-flash setting
-keep their existing behavior.
+taskbar labels and Alt-Tab. Chat-list counters and unread state are preserved
+for ordinary chats. Popup notifications, sounds and the separate taskbar
+attention-flash setting keep their existing behavior outside strict mute.
 
 ## Quiet names and composer
 
@@ -96,7 +96,8 @@ emoji, stickers and reactions retain their existing animation behavior.
 Empty message composers show no microphone or round-video recording button and
 reclaim its space. Voice and round-video recording shortcuts are disabled. Send,
 schedule, edit and attachment controls retain their existing behavior, as do
-incoming voice-message playback and calls.
+incoming voice-message playback and outgoing calls. Strict mute separately
+suppresses incoming-call attention for selected peers.
 
 ## Personal contact avatars
 
@@ -120,12 +121,65 @@ Already delivered OS notifications are not rewritten. Other Telegram clients
 still apply their own display rules, while personal contact photos continue to
 sync through Telegram.
 
+## Strict mute
+
+Enable **Strict mute** in a chat's menu and accept the confirmation to make that
+chat quiet locally. A static lock-and-mute mark beside the chat name and in its
+header distinguishes it from Telegram's ordinary mute. Icon-only chat lists show
+the same mark on a small plaque at the avatar's bottom edge, without a number or
+animation. The mark remains visible when the optional native mute icon is
+disabled, follows the current theme and
+selection colors, and reserves title space instead of covering the name. The
+header exposes the localized label as tooltip and accessibility description.
+
+Strict mute suppresses notifications, sound, flashing and unread/mention/reaction
+attention from the selected peer, including pending notifications. Incoming
+one-to-one calls do not open a call panel, ring or show a desktop notification;
+they are not automatically declined, and Telegram's signaling/timeouts remain.
+The owner may still explicitly open an available call or start an outgoing call.
+
+The stored preference is per account and per local installation. It does not
+change Telegram's server mute settings or mark messages read. The display omits
+strict-muted peers from unread badges and aggregate counters while preserving the
+underlying messages and unread state. The chat retains a stored sorting anchor
+instead of rising with new messages; explicit pinning and normal list/filter
+membership still apply; automatic unread/unmuted filters exclude strict-muted
+chats unless they are explicitly included. Turning strict mute off restores actual unread counts
+and current normal sorting without replaying old notifications. Restarting the
+client preserves the preference and anchor; signing into another account does
+not inherit them. Both enabling and disabling require explicit confirmation;
+Enter/Return cancels the confirmation by default.
+
+The archive may initially have a cloud total without all dialog metadata. The
+client requests the known strict-muted dialogs once per connection epoch. Until
+their archive membership and counts are known, or while a strict-muted forum has
+incomplete topic counts, only the unresolved archive aggregate is hidden. Failed
+requests do not turn unknown data into known counts and are retried on normal
+reconnection; unrelated chats keep their counters. Loading the archive/topics
+allows the display to reconcile without changing messages or read state.
+
 ## Verification
 
 Run `python3 Telegram/build/no-stories/test_personal_userpics.py` on a host with
 Python 3 and a C++20 `g++` compiler. It executes extracted production policy,
 cloud-view and personal-photo transition functions with synthetic dependencies;
 it does not compile the application or exercise Qt painting or the UI.
+
+Run the strict-mute regression checks with the same Python/C++20 environment:
+
+```sh
+python3 Telegram/build/no-stories/test_strict_mute_order.py
+python3 Telegram/build/no-stories/test_strict_mute_unread.py
+python3 Telegram/build/no-stories/test_strict_mute_calls.py
+python3 Telegram/build/no-stories/test_strict_mute_notifications.py
+python3 Telegram/build/no-stories/test_build.py --integration required
+```
+
+These compile selected production methods against synthetic dependencies. They
+cover ordering, raw/display counter separation, folder matching, call latching
+and queue cancellation. The CMake/Ninja fixture checks exact Release object
+selection. Windows CI then compiles the modified translation units before the
+full application; neither layer substitutes for logged-in GUI acceptance.
 
 Inspect `build-info.json`, verify the package against `SHA256SUMS.txt`, and test
 startup inside the dedicated VM. With production credentials, verify login,
@@ -145,3 +199,19 @@ an assigned photo must remain static. Check there is no original preview or
 avatar gallery, the editor still works, message photos still open, and self,
 bots, groups and channels retain their behavior. Use synthetic or owner-chosen
 test contacts and normal login, never imported session data.
+
+For strict-mute acceptance, use controlled test chats and check the following in
+a production build after normal owner login. These are acceptance requirements,
+not a claim that interactive testing has already passed.
+
+| Case | Required result |
+| --- | --- |
+| Enable, cancel, disable | Both transitions ask for confirmation; cancel or stray Enter changes nothing. Disabling restores actual unread counts and normal sorting without replaying alerts. |
+| New messages, mentions and reactions | Strict-muted peers produce no local notification, sound, attention flash or unread/mention/reaction badge; ordinary and ordinary-muted chats retain their expected behavior. |
+| Pending notifications | An alert queued before enabling strict mute is suppressed; disabling it does not replay the old queue. |
+| Chat list and aggregate counts | Strict-muted contributions disappear from chat, folder/filter and account counters while messages and actual unread state remain intact. |
+| Sorting and restart | Incoming messages, own sends, local/cloud drafts and reactions does not advance the stored anchor. Restart preserves it; explicit pinning and filter membership remain usable. |
+| Accounts | Switching between two accounts does not leak strict-mute preferences or anchors. |
+| Incoming and outgoing calls | A strict-muted caller produces no ringing, popup or notification; no automatic decline is sent. Explicitly opened and outgoing calls remain usable. |
+| Static marker | Lock-and-mute stays visible with the ordinary mute icon off, in light/dark themes, active/hovered rows, long names, narrow title areas, icon-only lists and RTL. Header label updates when the setting, chat or language changes. |
+| Regression controls | Non-strict chats, service peers, self chat, text/media sending, voice playback, personal avatars and existing quiet-interface changes retain their intended behavior. |

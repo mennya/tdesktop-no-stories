@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 namespace Dialogs {
 struct UnreadState;
+class Key;
 } // namespace Dialogs
 
 namespace Main {
@@ -16,6 +17,9 @@ class Session;
 } // namespace Main
 
 namespace Data {
+
+[[nodiscard]] Dialogs::UnreadState AttentionUnreadState(Dialogs::Key key);
+[[nodiscard]] Dialogs::UnreadState BadgeUnreadState(Dialogs::Key key);
 
 [[nodiscard]] Dialogs::UnreadState MainListMapUnreadState(
 	not_null<Main::Session*> session,

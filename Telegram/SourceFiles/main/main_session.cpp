@@ -6,6 +6,7 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 
 #include "apiwrap.h"
 #include "api/api_peer_colors.h"
@@ -106,6 +107,7 @@ Session::Session(
 : _userId(user.c_user().vid())
 , _account(account)
 , _settings(std::move(settings))
+, _strictMute(std::make_unique<StrictMute>(this))
 , _changes(std::make_unique<Data::Changes>(this))
 , _api(std::make_unique<ApiWrap>(this))
 , _updates(std::make_unique<Api::Updates>(this))
@@ -186,6 +188,7 @@ Session::Session(
 , _fastButtonsBots(std::make_unique<Support::FastButtonsBots>(this))
 , _saveSettingsTimer([=] { saveSettings(); }) {
 	Expects(_settings != nullptr);
+	_strictMute->start();
 
 	_api->requestTermsUpdate();
 	_api->requestFullPeer(_user);

@@ -34,6 +34,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "lang/lang_keys.h"
 #include "lottie/lottie_icon.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "storage/localstorage.h"
 #include "support/support_helper.h"
 #include "ui/empty_userpic.h"
@@ -319,6 +320,61 @@ void PaintNarrowCounter(
 		true);
 }
 
+void PaintNarrowStrictMute(
+		Painter &p,
+		const PaintContext &context,
+		QRect geometry) {
+	const auto &lock = st::dialogsSearchTagLocked;
+	const auto &mute = st::dialogsMuteIcon.icon;
+	const auto padding = 2 * st::lineWidth;
+	const auto gap = 2 * st::lineWidth;
+	const auto width = lock.width() + gap + mute.width() + 2 * padding;
+	const auto height = std::max(lock.height(), mute.height()) + 2 * padding;
+	const auto left = context.st->padding.left() + context.st->photoSize - width;
+	const auto top = context.st->padding.top() + context.st->photoSize - height;
+	const auto fg = context.active
+		? st::dialogsNameFgActive
+		: context.selected
+		? st::dialogsNameFgOver
+		: st::dialogsNameFg;
+	const auto bg = context.active
+		? st::dialogsBgActive
+		: context.selected
+		? st::dialogsBgOver
+		: context.currentBg;
+	const auto avatar = style::rtlrect(
+		QRect(
+			context.st->padding.left(),
+			context.st->padding.top(),
+			context.st->photoSize,
+			context.st->photoSize),
+		context.width);
+	p.save();
+	p.setClipRect(avatar.intersected(geometry), Qt::IntersectClip);
+	{
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(bg);
+		p.drawRoundedRect(
+			style::rtlrect(QRect(left, top, width, height), context.width),
+			padding,
+			padding);
+		lock.paint(
+			p,
+			left + padding,
+			top + (height - lock.height()) / 2,
+			context.width,
+			fg->c);
+		mute.paint(
+			p,
+			left + padding + lock.width() + gap,
+			top + (height - mute.height()) / 2,
+			context.width,
+			fg->c);
+	}
+	p.restore();
+}
+
 int PaintWideCounter(
 		QPainter &p,
 		const PaintContext &context,
@@ -464,6 +520,8 @@ void PaintRow(
 	const auto history = entry->asHistory();
 	const auto thread = entry->asThread();
 	const auto sublist = entry->asSublist();
+	const auto strictMuted = thread
+		&& Main::IsStrictMuted(thread->owningHistory()->peer);
 
 	auto bg = context.active
 		? st::dialogsBgActive
@@ -543,10 +601,10 @@ void PaintRow(
 			videoUserpic,
 			context,
 			(context.narrow
-				&& !badgesState.empty()
-				&& !draft
-				&& item
-				&& !item->isEmpty()));
+				&& (strictMuted || (!badgesState.empty()
+					&& !draft
+					&& item
+					&& !item->isEmpty()))));
 	}
 
 	const auto nameleft = context.st->nameLeft;
@@ -554,7 +612,9 @@ void PaintRow(
 		PaintExpandedTopicsBar(p, context.topicsExpanded);
 	}
 	if (context.narrow) {
-		if (!draft && item && !item->isEmpty()) {
+		if (strictMuted) {
+			PaintNarrowStrictMute(p, context, geometry);
+		} else if (!draft && item && !item->isEmpty()) {
 			PaintNarrowCounter(p, context, badgesState);
 		}
 		return;
@@ -933,9 +993,12 @@ void PaintRow(
 			context.width,
 			text);
 	} else if (from) {
-		const auto drawMuteIcon = DialogsMuteIcon.value()
+		const auto strictLockWidth = st::dialogsSearchTagLocked.width()
+			+ 2 * st::lineWidth;
+		const auto strictMarkerClip = style::rtlrect(rectForName, context.width);
+		const auto drawMuteIcon = strictMuted || (DialogsMuteIcon.value()
 			&& thread
-			&& thread->muted();
+			&& thread->muted());
 		if (drawMuteIcon) {
 			const auto &muteIcon = ThreeStateIcon(
 				st::dialogsMuteIcon,
@@ -944,13 +1007,20 @@ void PaintRow(
 			rectForName.setWidth(
 				rectForName.width()
 					- muteIcon.width()
+					- (strictMuted ? strictLockWidth : 0)
 					- st::dialogsMuteIconSkip);
+		}
+		if (strictMuted) {
+			rectForName.setWidth(std::max(rectForName.width(), 0));
 		}
 		auto badgeWidth = 0;
 		if ((history || sublist) && !context.search) {
 			const auto widthBefore = rectForName.width();
 			paintPeerBadge(rowName.maxWidth());
 			badgeWidth = widthBefore - rectForName.width();
+		}
+		if (strictMuted) {
+			rectForName.setWidth(std::max(rectForName.width(), 0));
 		}
 		p.setPen(context.active
 			? st::dialogsNameFgActive
@@ -970,13 +1040,33 @@ void PaintRow(
 			const auto nameW = std::min(
 				rowName.maxWidth(),
 				rectForName.width());
-			const auto muteLeft = rectForName.left()
+			auto muteLeft = rectForName.left()
 				+ nameW
 				+ badgeWidth
 				+ st::dialogsMuteIconSkip;
+			if (strictMuted) {
+				p.save();
+				p.setClipRect(strictMarkerClip, Qt::IntersectClip);
+				const auto fg = context.active
+					? st::dialogsUnreadBgMutedActive
+					: context.selected
+					? st::dialogsUnreadBgMutedOver
+					: st::dialogsUnreadBgMuted;
+				st::dialogsSearchTagLocked.paint(
+					p,
+					muteLeft,
+					rectForName.top() + (st::semiboldFont->height
+						- st::dialogsSearchTagLocked.height()) / 2,
+					context.width,
+					fg->c);
+				muteLeft += strictLockWidth;
+			}
 			const auto muteTop = rectForName.top()
 				+ (st::semiboldFont->height - muteIcon.height()) / 2;
 			muteIcon.paint(p, muteLeft, muteTop, context.width);
+			if (strictMuted) {
+				p.restore();
+			}
 		}
 	} else if (hiddenSenderInfo) {
 		p.setPen(context.active

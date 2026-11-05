@@ -88,6 +88,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "core/mime_type.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "main/main_session_settings.h"
 #include "media/player/media_player_instance.h"
 #include "menu/menu_timecode_action.h"
@@ -984,6 +985,13 @@ ChatWidget::ChatWidget(
 			}
 		}, lifetime());
 	}
+
+	session().strictMute().changes() | rpl::filter([=](PeerId peer) {
+		return _history->peer->id == peer;
+	}) | rpl::on_next([=] {
+		unreadCountUpdated();
+		_cornerButtons.updateUnreadThingsVisibility();
+	}, lifetime());
 
 	if (mode() == Mode::History) {
 		using HistoryUpdateFlag = Data::HistoryUpdate::Flag;

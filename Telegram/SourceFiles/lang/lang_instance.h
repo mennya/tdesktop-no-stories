@@ -95,6 +95,24 @@ public:
 			&& (_id == u"ru"_q || baseId() == u"ru"_q)) {
 			return u"Сторис скрыта"_q;
 		}
+		if (!_nonDefaultSet[key]
+			&& (_id == u"ru"_q || baseId() == u"ru"_q)) {
+			if (key == tr::lng_strict_mute_label.base) {
+				return u"Строгий мьют"_q;
+			}
+			if (key == tr::lng_strict_mute_enable.base) {
+				return u"Включить строгий мьют…"_q;
+			}
+			if (key == tr::lng_strict_mute_disable.base) {
+				return u"Выключить строгий мьют…"_q;
+			}
+			if (key == tr::lng_strict_mute_enable_confirm.base) {
+				return u"Заглушить весь чат, включая темы, на этом устройстве? Уведомления, оповещения о входящих звонках и все значки непрочитанного будут скрыты. Новые сообщения и черновики не поднимут чат в списке. Сообщения и состояние прочитанного сохранятся."_q;
+			}
+			if (key == tr::lng_strict_mute_disable_confirm.base) {
+				return u"Вернуть обычный режим для этого чата? Вернутся значки непрочитанного и актуальное место в списке. Старые уведомления и уже заглушённые входящие звонки не повторятся. Обычные настройки уведомлений Telegram продолжат действовать."_q;
+			}
+		}
 		return _values[key];
 	}
 	QString getNonDefaultValue(const QByteArray &key) const;

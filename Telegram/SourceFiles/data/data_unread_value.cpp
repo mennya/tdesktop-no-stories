@@ -13,6 +13,11 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_folder.h"
 #include "data/data_session.h"
 #include "main/main_session.h"
+#include "data/data_peer.h"
+#include "history/history.h"
+#include "dialogs/dialogs_key.h"
+#include "dialogs/dialogs_entry.h"
+#include "main/main_strict_mute.h"
 #include "window/notifications_manager.h"
 
 namespace Data {
@@ -23,18 +28,46 @@ rpl::producer<Dialogs::UnreadState> MainListUnreadState(
 	return rpl::single(rpl::empty) | rpl::then(
 		list->unreadStateChanges() | rpl::to_empty
 	) | rpl::map([=] {
-		return list->unreadState();
+		return list->attentionUnreadState();
 	});
 }
 
 } // namespace
+
+Dialogs::UnreadState AttentionUnreadState(Dialogs::Key key) {
+	if (!key || (key.peer() && Main::IsStrictMuted(key.peer()))) {
+		return {};
+	} else if (const auto folder = key.folder()) {
+		return folder->chatsList()->attentionUnreadState();
+	}
+	return key.entry()->chatListUnreadState();
+}
+
+Dialogs::UnreadState BadgeUnreadState(Dialogs::Key key) {
+	auto result = AttentionUnreadState(key);
+	if (const auto history = key ? key.owningHistory() : nullptr) {
+		if (const auto folder = history->folder()) {
+			if (!folder->chatsList()->attentionUnreadState().known) {
+				// The account badge excludes this unresolved archive entirely.
+				// Ignoring an open chat must not subtract it a second time.
+				return {};
+			}
+			// Archive contributions are all muted in the account aggregate,
+			// independently of each history's native notification setting.
+			result.messagesMuted = result.messages;
+			result.chatsMuted = result.chats;
+			result.marksMuted = result.marks;
+		}
+	}
+	return result;
+}
 
 [[nodiscard]] Dialogs::UnreadState MainListMapUnreadState(
 		not_null<Main::Session*> session,
 		const Dialogs::UnreadState &state) {
 	const auto folderId = Data::Folder::kId;
 	if (const auto folder = session->data().folderLoaded(folderId)) {
-		return state - folder->chatsList()->unreadState();
+		return state - folder->chatsList()->attentionUnreadState();
 	}
 	return state;
 }

@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "history/history_item.h"
 #include "history/history_unread_things.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "menu/menu_send.h"
 #include "apiwrap.h"
 #include "api/api_unread_things.h"
@@ -461,7 +462,7 @@ void CornerButtons::updateUnreadThingsVisibility() {
 		return;
 	}
 	const auto thread = _delegate->cornerButtonsThread();
-	if (!thread) {
+	if (!thread || Main::IsStrictMuted(thread->peer())) {
 		updateVisibility(Type::Mentions, false);
 		updateVisibility(Type::Reactions, false);
 		updateVisibility(Type::PollVotes, false);
@@ -516,6 +517,10 @@ void CornerButtons::updateUnreadThingsVisibility() {
 }
 
 void CornerButtons::updateJumpDownVisibility(std::optional<int> counter) {
+	if (const auto thread = _delegate->cornerButtonsThread();
+		thread && Main::IsStrictMuted(thread->peer())) {
+		counter = 0;
+	}
 	if (const auto shown = _delegate->cornerButtonsDownShown()) {
 		updateVisibility(Type::Down, *shown);
 	}

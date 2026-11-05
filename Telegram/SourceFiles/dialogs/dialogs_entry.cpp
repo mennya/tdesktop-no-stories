@@ -21,6 +21,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/core_settings.h"
 #include "mainwidget.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "main/main_session_settings.h"
 #include "ui/text/format_values.h"
 #include "ui/text/text_options.h"
@@ -217,8 +218,12 @@ void Entry::updateChatListSortPosition() {
 		updateChatListEntry();
 		return;
 	}
-	const auto sortKeyByDate = DialogPosFromDate(adjustedChatListTimeId());
-	_sortKeyByDate = (owner().dialogsUnreadOnTop()
+	const auto history = asHistory();
+	const auto anchor = history ? Main::StrictMuteAnchor(history->peer) : 0;
+	const auto sortKeyByDate = anchor
+		? anchor
+		: DialogPosFromDate(adjustedChatListTimeId());
+	_sortKeyByDate = (!anchor && owner().dialogsUnreadOnTop()
 		&& hasUnreadUnmutedForSort())
 		? UnreadOnTopDialogPos(sortKeyByDate)
 		: sortKeyByDate;
@@ -251,6 +256,11 @@ uint64 Entry::computeSortPosition(FilterId filterId) const {
 }
 
 bool Entry::hasUnreadUnmutedForSort() const {
+	if (const auto thread = asThread()) {
+		if (Main::IsStrictMuted(thread->peer())) {
+			return false;
+		}
+	}
 	const auto state = chatListUnreadState();
 	return (state.messages > state.messagesMuted)
 		|| (state.marks > state.marksMuted)

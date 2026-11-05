@@ -11,6 +11,12 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "data/data_session.h"
 #include "data/data_chat_filters.h"
 #include "main/main_session.h"
+#include "dialogs/dialogs_row.h"
+#include "data/data_unread_value.h"
+#include "data/data_folder.h"
+#include "data/data_forum.h"
+#include "data/data_peer.h"
+#include "main/main_strict_mute.h"
 #include "history/history_unread_things.h"
 #include "history/history.h"
 
@@ -20,10 +26,17 @@ MainList::MainList(
 	not_null<Main::Session*> session,
 	FilterId filterId,
 	rpl::producer<int> pinnedLimit)
-: _filterId(filterId)
+: _session(session)
+, _filterId(filterId)
 , _all(SortMode::Date, filterId)
 , _pinned(filterId, 1) {
 	_unreadState.known = true;
+
+	session->strictMute().changes() | rpl::on_next([=] {
+		// A policy toggle changes presentation only. The previous RAW state
+		// must equal the current one so parents receive a zero accounting delta.
+		_unreadStateChanges.fire_copy(unreadState());
+	}, _lifetime);
 
 	std::move(
 		pinnedLimit
@@ -215,6 +228,72 @@ UnreadState MainList::unreadState() const {
 		+ _unreadState.reactions + _unreadState.reactionsMuted
 		+ _unreadState.mentions;
 #endif // Q_OS_WIN
+	return result;
+}
+
+UnreadState MainList::attentionUnreadState() const {
+	auto result = unreadState();
+	if (_session->strictMute().entries().empty()) {
+		return result;
+	}
+	const auto cloudArchive = _allAreMuted
+		&& _cloudUnreadState.known
+		&& !loaded();
+	if (cloudArchive) {
+		// These counters are not part of the server folder total. Project
+		// the loaded rows, exactly as with manual unread marks above.
+		result.mentions = _unreadState.mentions;
+		result.reactions = _unreadState.reactions;
+		result.reactionsMuted = _unreadState.reactionsMuted;
+		result.polls = _unreadState.polls;
+		result.pollsMuted = _unreadState.pollsMuted;
+		// The cloud total includes dialogs not yet present in _all. Until
+		// every configured peer has known archive membership/counts, the
+		// archive total cannot be safely projected. Hydration is owned by
+		// StrictMute; never modify the raw cloud total or mark chats read.
+		for (const auto &[id, anchor] : _session->strictMute().entries()) {
+			const auto history = _session->data().historyLoaded(id);
+			if (!history || !history->folderKnown()) {
+				return {};
+			}
+			if (!history->folder()) {
+				continue;
+			}
+			if (const auto forum = history->peer->forum();
+				forum && !forum->topicsList()->loaded()) {
+				// Known loaded-topic counters are not the full dialog's
+				// contribution to the server archive aggregate.
+				return {};
+			}
+			auto state = history->chatListUnreadState();
+			if (!state.known) {
+				return {};
+			}
+			if (!_all.contains(history)) {
+				// The server supplies only messages/chats totals. Other
+				// counters in the cloud projection come from loaded rows.
+				state.marks = state.marksMuted = state.mentions = 0;
+				state.reactions = state.reactionsMuted = 0;
+				state.polls = state.pollsMuted = 0;
+			}
+			result -= state;
+		}
+		if (result.messages < 0 || result.chats < 0 || result.marks < 0) {
+			// Different server snapshots have not reconciled yet.
+			return {};
+		}
+	} else {
+		for (const auto row : _all) {
+			const auto key = row->key();
+			result -= key.entry()->chatListUnreadState();
+			result += Data::AttentionUnreadState(key);
+		}
+	}
+	if (_allAreMuted) {
+		result.messagesMuted = result.messages;
+		result.chatsMuted = result.chats;
+		result.marksMuted = result.marks;
+	}
 	return result;
 }
 

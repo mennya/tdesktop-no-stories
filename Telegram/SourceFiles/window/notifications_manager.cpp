@@ -43,6 +43,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "main/main_domain.h"
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
+#include "main/main_strict_mute.h"
 #include "ui/text/text_utilities.h"
 #include "platform/platform_specific.h"
 
@@ -163,6 +164,9 @@ base::options::toggle HideReplyButtonOption({
 [[nodiscard]] std::optional<DocumentId> MaybeSoundFor(
 		not_null<Data::Thread*> thread,
 		PeerData *from) {
+	if (Main::IsStrictMuted(thread->owningHistory()->peer)) {
+		return std::nullopt;
+	}
 	const auto notifySettings = &thread->owner().notifySettings();
 	const auto threadUnknown = notifySettings->muteUnknown(thread);
 	const auto threadAlert = !threadUnknown
@@ -339,6 +343,9 @@ System::SkipState System::computeSkipState(
 	const auto type = notification.type;
 	const auto item = notification.item;
 	const auto thread = item->notificationThread();
+	if (Main::IsStrictMuted(item->history()->peer)) {
+		return { SkipState::Skip };
+	}
 	const auto notifySettings = &thread->owner().notifySettings();
 	const auto messageType = (type == Data::ItemNotificationType::Message);
 	const auto withSilent = [&](
@@ -418,6 +425,32 @@ System::Timing System::countTiming(
 	};
 }
 
+void System::registerSession(not_null<Main::Session*> session) {
+	if (!_watchedSessions.emplace(session).second) {
+		return;
+	}
+	session->strictMute().changes() | rpl::on_next([=](PeerId peerId) {
+		const auto history = session->data().historyLoaded(peerId);
+		if (!history || !Main::IsStrictMuted(history->peer)) {
+			return;
+		}
+		++_strictMuteRevisions[{ session->uniqueId(), peerId }];
+		history->clearNotifications();
+		clearFromHistory(history);
+	}, session->lifetime());
+	session->lifetime().add([=] {
+		_watchedSessions.remove(session);
+	});
+}
+
+uint64 System::strictMuteRevision(not_null<const PeerData*> peer) const {
+	const auto i = _strictMuteRevisions.find({
+		peer->session().uniqueId(),
+		peer->id,
+	});
+	return (i != end(_strictMuteRevisions)) ? i->second : 0;
+}
+
 void System::registerThread(not_null<Data::Thread*> thread) {
 	if (const auto topic = thread->asTopic()) {
 		const auto &[i, ok] = _watchedTopics.emplace(topic, rpl::lifetime());
@@ -444,6 +477,7 @@ void System::schedule(Data::ItemNotification notification) {
 	const auto item = notification.item;
 	const auto type = notification.type;
 	const auto thread = item->notificationThread();
+	registerSession(&thread->session());
 	const auto skip = skipNotification(notification);
 	if (skip.value == SkipState::Skip) {
 		thread->popNotification(notification);
@@ -504,6 +538,7 @@ void System::schedule(Data::ItemNotification notification) {
 }
 
 void System::clearAll() {
+	clearGrouped();
 	if (_manager) {
 		_manager->clearAll();
 	}
@@ -556,6 +591,19 @@ void System::clearFromSublist(not_null<Data::SavedSublist*> sublist) {
 }
 
 void System::clearForThreadIf(Fn<bool(not_null<Data::Thread*>)> predicate) {
+	const auto lastSession = findSession(_lastHistorySessionId);
+	const auto lastItem = lastSession
+		? lastSession->data().message(_lastHistoryItemId)
+		: nullptr;
+	const auto lastThread = lastItem
+		? lastItem->maybeNotificationThread()
+		: nullptr;
+	if ((lastThread && predicate(lastThread))
+		|| groupedMatches([&](not_null<History*> history) {
+			return predicate(history);
+		})) {
+		clearGrouped();
+	}
 	for (auto i = _whenMaps.begin(); i != _whenMaps.end();) {
 		const auto thread = i->first;
 		if (!predicate(thread)) {
@@ -578,6 +626,7 @@ void System::clearForThreadIf(Fn<bool(not_null<Data::Thread*>)> predicate) {
 		for (auto i = map.begin(); i != map.end();) {
 			const auto thread = i->first;
 			if (predicate(thread)) {
+				thread->clearNotifications();
 				if (const auto topic = thread->asTopic()) {
 					_watchedTopics.remove(topic);
 				} else if (const auto sublist = thread->asSublist()) {
@@ -731,6 +780,7 @@ void System::clearFromItem(not_null<HistoryItem*> item) {
 }
 
 void System::clearAllFast() {
+	clearGrouped();
 	if (_manager) {
 		_manager->clearAllFast();
 	}
@@ -778,12 +828,49 @@ void System::checkDelayed() {
 	showNext();
 }
 
+void System::trackGroupedItem(not_null<HistoryItem*> item) {
+	const auto history = item->history();
+	_lastHistorySessionId = history->session().uniqueId();
+	_lastHistoryItemId = item->fullId();
+	_groupedHistories.emplace(
+		_lastHistorySessionId,
+		history->peer->id);
+}
+
+bool System::groupedMatches(Fn<bool(not_null<History*>)> predicate) const {
+	return ranges::any_of(_groupedHistories, [&](const auto &key) {
+		const auto [sessionId, peerId] = key;
+		const auto session = findSession(sessionId);
+		const auto history = session
+			? session->data().historyLoaded(peerId)
+			: nullptr;
+		return history && predicate(history);
+	});
+}
+
+void System::clearGrouped() {
+	_groupedHistories.clear();
+	_waitForAllGroupedTimer.cancel();
+	_lastForwardedCount = 0;
+	_lastHistoryItemId = FullMsgId();
+	_lastHistorySessionId = 0;
+	_lastSoundId = {};
+}
+
 void System::showGrouped() {
 	Expects(_manager != nullptr);
 
+	const auto guard = gsl::finally([&] { clearGrouped(); });
+	if (groupedMatches([](not_null<History*> history) {
+		return Main::IsStrictMuted(history->peer);
+	})) {
+		return;
+	}
 	if (const auto session = findSession(_lastHistorySessionId)) {
 		if (const auto lastItem = session->data().message(_lastHistoryItemId)) {
-			_waitForAllGroupedTimer.cancel();
+			if (Main::IsStrictMuted(lastItem->history()->peer)) {
+				return;
+			}
 			const auto thread = lastItem->maybeNotificationThread();
 			// A summary of several forwards may span threads, so skip it.
 			if (thread && _lastForwardedCount < 2) {
@@ -794,10 +881,6 @@ void System::showGrouped() {
 				.forwardedCount = _lastForwardedCount,
 				.soundId = _lastSoundId,
 			});
-			_lastForwardedCount = 0;
-			_lastHistoryItemId = FullMsgId();
-			_lastHistorySessionId = 0;
-			_lastSoundId = {};
 		}
 	}
 }
@@ -851,11 +934,17 @@ void System::showNext() {
 	}
 	const auto &settings = Core::App().settings();
 	if (alertThread) {
+		const auto revision = strictMuteRevision(
+			alertThread->owningHistory()->peer);
 		if (settings.flashBounceNotify()) {
 			const auto peer = alertThread->peer();
 			if (const auto window = Core::App().windowFor(peer)) {
 				if (const auto controller = window->sessionController()) {
 					_manager->maybeFlashBounce(crl::guard(controller, [=] {
+						if (Main::IsStrictMuted(peer)
+							|| strictMuteRevision(peer) != revision) {
+							return;
+						}
 						if (const auto handle = window->widget()->windowHandle()) {
 							handle->alert(kSystemAlertDuration);
 							// (handle, SLOT(_q_clearAlert())); in the future.
@@ -876,7 +965,12 @@ void System::showNext() {
 				volume = owner->session().settings().ringtoneVolume(
 					Data::DefaultNotifyType(alertThread->peer()));
 			}
+			const auto peer = alertThread->owningHistory()->peer;
 			_manager->maybePlaySound(crl::guard(&owner->session(), [=] {
+				if (Main::IsStrictMuted(peer)
+					|| strictMuteRevision(peer) != revision) {
+					return;
+				}
 				const auto track = lookupSound(owner, id);
 				track->playOnce(volume ? volume * 0.01 : 0);
 				Media::Player::mixer()->suppressAll(track->getLengthMs());
@@ -900,6 +994,14 @@ void System::showNext() {
 		auto notifyThread = (Data::Thread*)nullptr;
 		for (auto i = _waiters.begin(); i != _waiters.end();) {
 			const auto thread = i->first;
+			if (Main::IsStrictMuted(thread->owningHistory()->peer)) {
+				thread->clearNotifications();
+				_whenMaps.remove(thread);
+				_whenAlerts.remove(thread);
+				_settingWaiters.remove(thread);
+				i = _waiters.erase(i);
+				continue;
+			}
 			auto current = thread->currentNotification();
 			if (current && current->item->id != i->second.key.messageId) {
 				auto j = _whenMaps.find(thread);
@@ -1020,8 +1122,7 @@ void System::showNext() {
 		}
 
 		if (!_lastHistoryItemId && groupedItem) {
-			_lastHistorySessionId = groupedItem->history()->session().uniqueId();
-			_lastHistoryItemId = groupedItem->fullId();
+			trackGroupedItem(groupedItem);
 			_lastSoundId = notifySilent ? std::nullopt : MaybeSoundFor(
 				notifyThread,
 				groupedItem->specialNotificationPeer());
@@ -1041,8 +1142,7 @@ void System::showNext() {
 			}
 			// We have to wait until all the messages in this group are loaded.
 			_lastForwardedCount += forwardedCount;
-			_lastHistorySessionId = groupedItem->history()->session().uniqueId();
-			_lastHistoryItemId = groupedItem->fullId();
+			trackGroupedItem(groupedItem);
 			_lastSoundId = notifySilent ? std::nullopt : MaybeSoundFor(
 				notifyThread,
 				groupedItem->specialNotificationPeer());

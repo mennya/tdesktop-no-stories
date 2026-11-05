@@ -95,6 +95,7 @@ class Account;
 class AppConfig;
 class Domain;
 class SessionSettings;
+class StrictMute;
 class SendAsPeers;
 
 struct FreezeInfo {
@@ -224,6 +225,9 @@ public:
 	[[nodiscard]] Data::Session &data() const {
 		return *_data;
 	}
+	[[nodiscard]] StrictMute &strictMute() const {
+		return *_strictMute;
+	}
 	[[nodiscard]] SessionSettings &settings() const {
 		return *_settings;
 	}
@@ -322,6 +326,7 @@ private:
 	const not_null<Account*> _account;
 
 	const std::unique_ptr<SessionSettings> _settings;
+	const std::unique_ptr<StrictMute> _strictMute;
 	const std::unique_ptr<Data::Changes> _changes;
 	const std::unique_ptr<ApiWrap> _api;
 	const std::unique_ptr<Api::Updates> _updates;

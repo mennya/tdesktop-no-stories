@@ -136,6 +136,13 @@ public:
 		return _conferenceParticipants;
 	}
 	[[nodiscard]] bool isIncomingWaiting() const;
+	[[nodiscard]] bool incomingNotificationsSuppressed() const {
+		return _incomingNotificationsSuppressed.current();
+	}
+	[[nodiscard]] auto incomingNotificationsSuppressedValue() const
+	-> rpl::producer<bool> {
+		return _incomingNotificationsSuppressed.value();
+	}
 
 	void start(bytes::const_span random);
 	bool handleUpdate(const MTPPhoneCall &call);
@@ -304,6 +311,7 @@ private:
 	void showRatingBox();
 	void startOutgoing();
 	void startIncoming();
+	void setupIncomingNotifications();
 	void startWaitingTrack();
 	void sendSignalingData(const QByteArray &data);
 
@@ -342,6 +350,7 @@ private:
 	MTP::Sender _api;
 	Type _type = Type::Outgoing;
 	rpl::variable<State> _state = State::Starting;
+	rpl::variable<bool> _incomingNotificationsSuppressed = false;
 	rpl::variable<bool> _conferenceSupported = false;
 	rpl::variable<RemoteAudioState> _remoteAudioState
 		= RemoteAudioState::Active;

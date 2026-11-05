@@ -192,6 +192,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/item_text_options.h"
 #include "main/main_app_config.h"
 #include "main/main_session.h"
+#include "main/main_strict_mute.h"
 #include "main/main_session_settings.h"
 #include "main/session/send_as_peers.h"
 #include "webrtc/webrtc_environment.h"
@@ -838,6 +839,14 @@ HistoryWidget::HistoryWidget(
 		if (update.flags & EntryUpdateFlag::ForwardDraft) {
 			updateForwarding();
 		}
+	}, lifetime());
+
+	session().strictMute().changes() | rpl::filter([=](PeerId peer) {
+		return _history && ((_history->peer->id == peer)
+			|| (_migrated && _migrated->peer->id == peer));
+	}) | rpl::on_next([=] {
+		unreadCountUpdated();
+		_cornerButtons.updateUnreadThingsVisibility();
 	}, lifetime());
 
 	using HistoryUpdateFlag = Data::HistoryUpdate::Flag;
