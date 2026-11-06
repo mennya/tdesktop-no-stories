@@ -17,18 +17,18 @@ def main():
     args = parser.parse_args()
     sources = Path(__file__).resolve().parents[2] / 'SourceFiles'
     source = (sources / 'dialogs/dialogs_entry.cpp').read_text()
-    header = (sources / 'dialogs/dialogs_entry.h').read_text()
     helpers = '\n'.join(extract(source, sig) for sig in (
         'uint64 DialogPosFromDate(', 'uint64 FixedOnTopDialogPos(',
         'uint64 PinnedDialogPos(', 'uint64 UnreadOnTopDialogPos(',
     ))
     methods = '\n'.join(extract(source, sig) for sig in (
+        'uint64 Entry::chronologicalSortKey() const',
         'void Entry::updateChatListSortPosition()',
         'uint64 Entry::computeSortPosition(',
         'bool Entry::hasUnreadUnmutedForSort() const',
     ))
-    chronological = extract(header, '[[nodiscard]] uint64 chronologicalSortKey() const')
     fixture = r'''
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
@@ -57,18 +57,29 @@ struct Entry {
     const Thread *asThread()const{return &thread;}
     State chatListUnreadState()const{return raw;}
     int lookupPinnedIndex(FilterId f)const{return f?folderPin:pin;}
-    TimeId adjustedChatListTimeId()const{return date;}
+    virtual TimeId adjustedChatListTimeId()const{return date;}
     int fixedOnTopIndex()const{return fixed;}
     bool needUpdateInChatList()const{return exists;}
     void setChatListExistence(bool){} void updateChatListEntry(){}
     void updateChatListSortPosition(); uint64 computeSortPosition(FilterId)const;
     bool hasUnreadUnmutedForSort()const;
-    // CHRONOLOGICAL
+    uint64 chronologicalSortKey() const;
+};
+struct DraftDialog : Entry {
+    TimeId draftDate = 110;
+private:
+    TimeId adjustedChatListTimeId() const override { return draftDate; }
 };
 // METHODS
 int main(){
     int checks=0;
     auto check=[&](bool b,const char *name){if(!b)throw std::runtime_error(name);++checks;};
+    DraftDialog pending;
+    check(pending.chronologicalSortKey() == (uint64(110) << 32),
+        "unpositioned dialog uses virtual adjusted date including drafts");
+    pending.draftDate = 0;
+    check(pending.chronologicalSortKey() == (uint64(1) << 32),
+        "empty unpositioned dialog gets a nonzero anchor");
     Entry a,b; a.updateChatListSortPosition(); b.updateChatListSortPosition();
     check(b._sortKeyInChatList>a._sortKeyInChatList,"normal same-second bump retained");
     const auto original=a.chronologicalSortKey(); a.peer.anchor=original;
@@ -109,7 +120,7 @@ int main(){
     std::cout<<"PASS: "<<checks<<" production sorting checks\n";
 }
 '''
-    code = fixture.replace('// HELPERS', helpers).replace('// CHRONOLOGICAL', chronological).replace('// METHODS', methods)
+    code = fixture.replace('// HELPERS', helpers).replace('// METHODS', methods)
     with tempfile.TemporaryDirectory(prefix='telegram-strict-order-') as directory:
         source = Path(directory) / 'model.cpp'
         binary = Path(directory) / 'model'

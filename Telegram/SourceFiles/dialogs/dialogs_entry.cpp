@@ -211,6 +211,13 @@ bool Entry::needUpdateInChatList() const {
 	return inChatList() || shouldBeInChatList();
 }
 
+uint64 Entry::chronologicalSortKey() const {
+	const auto key = _sortKeyByDate & 0x7FFFFFFFFFFFFFFFULL;
+	return key
+		? key
+		: (uint64(std::max(adjustedChatListTimeId(), TimeId(1))) << 32);
+}
+
 void Entry::updateChatListSortPosition() {
 	if (session().supportMode()
 		&& _sortKeyInChatList != 0

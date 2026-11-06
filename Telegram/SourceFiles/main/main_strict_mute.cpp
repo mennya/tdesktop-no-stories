@@ -27,7 +27,6 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "mtproto/facade.h"
 #include "base/weak_ptr.h"
 #include "history/history.h"
-#include "base/unixtime.h"
 
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -186,11 +185,7 @@ void StrictMute::set(not_null<PeerData*> peer, bool enabled) {
 	}
 	if (enabled) {
 		const auto history = _session->data().history(peer);
-		const auto key = history->chronologicalSortKey();
-		_entries.emplace(peer->id, key ? key
-			: (uint64(std::max(
-				history->adjustedChatListTimeId(),
-				TimeId(1))) << 32));
+		_entries.emplace(peer->id, history->chronologicalSortKey());
 	} else {
 		_entries.remove(peer->id);
 	}

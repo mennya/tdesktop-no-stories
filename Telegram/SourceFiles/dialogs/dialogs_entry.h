@@ -131,9 +131,7 @@ public:
 			? computeSortPosition(filterId)
 			: _sortKeyInChatList;
 	}
-	[[nodiscard]] uint64 chronologicalSortKey() const {
-		return _sortKeyByDate & 0x7FFFFFFFFFFFFFFFULL;
-	}
+	[[nodiscard]] uint64 chronologicalSortKey() const;
 	void updateChatListSortPosition();
 	void setChatListTimeId(TimeId date);
 	virtual void updateChatListExistence();
