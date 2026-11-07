@@ -32,7 +32,8 @@
   },
   "reviewed": {
     "release:v7.3.3": "aa16746644b01f1a986bb0d08d53c79effffed2ca827af53d792bc0a2d48c095",
-    "release:v7.3.5": "bbc88f61f293d3101b086ddc88d7f7b0b783890f255b095e3616c9c21a7a74f1"
+    "release:v7.3.5": "bbc88f61f293d3101b086ddc88d7f7b0b783890f255b095e3616c9c21a7a74f1",
+    "release:v7.4.1": "bd4bf8203debc99ef4ec54ddd866e9e29026b7715a3206f375edffaba2394ddd"
   },
   "schema": 1
 }
