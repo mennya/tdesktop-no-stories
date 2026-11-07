@@ -14,6 +14,11 @@
   "last_error": "CHANGELOG_RELEASE_MISSING",
   "last_status": "failed",
   "outbox": {
+    "failure:CHANGELOG_RELEASE_MISSING": {
+      "at": "2026-11-07T14:40:51+00:00",
+      "status": "sending",
+      "url": "https://github.com/mennya/tdesktop-no-stories/actions/workflows/release-watch.yml"
+    },
     "failure:GITHUB_RELEASES_HTTP_504": {
       "at": "2026-11-06T15:40:03+00:00",
       "status": "sent",
