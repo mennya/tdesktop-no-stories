@@ -1,5 +1,6 @@
 {
   "failures": {
+    "CHANGELOG_RELEASE_MISSING": "2026-11-07T14:40:53+00:00",
     "GITHUB_RELEASES_HTTP_504": "2026-11-06T15:40:04+00:00"
   },
   "installed_tag": "v7.3.3",
