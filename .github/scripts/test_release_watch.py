@@ -64,6 +64,54 @@ class SourceTests(unittest.TestCase):
         html = '<article class="entry" id="v7.3.3"><h2><a href="#v7.3.3"></a>7.3.3 <time>21.10.26</time></h2><ul><li>Fix &#x27;?&#x27; key.</li></ul></article>'
         self.assertIn("Fix '?' key.", watch.parse_changelog(html)["v7.3.3"])
 
+    def test_collect_accepts_equivalent_release_labels(self):
+        baseline = {"tag_name": "v7.3.3", "published_at": "2026-10-21T00:00:00Z",
+                    "body": "Baseline", "html_url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.3"}
+        for tag, heading in (("v7.4.0", "v7.4"), ("v7.4", "v7.4.0"),
+                             ("7.4.0", "v7.4"), ("v7.4.0", "7.4")):
+            with self.subTest(tag=tag, heading=heading):
+                release = dict(baseline, tag_name=tag, body="Widget release",
+                               html_url="https://github.com/telegramdesktop/tdesktop/releases/tag/" + tag)
+                html = ('<article class="entry" id="v7.3.3">Baseline notes</article>'
+                        + '<article class="entry" id="' + heading + '">Widget notes</article>')
+                http = FakeHttp([([release, baseline], {}), ([], {})], html.encode())
+                sources = watch.collect(http, CONFIG)
+                self.assertEqual(sources.errors, [])
+                actual = next(source for source in sources if source["tag"] == tag)
+                self.assertTrue(actual["complete"])
+                self.assertEqual(json.loads(actual["text"])["changelog"], "Widget notes")
+                self.assertEqual(actual["id"], "release:" + tag)
+                self.assertEqual(actual["url"], release["html_url"])
+
+    def test_changelog_lookup_does_not_match_different_or_beta_versions(self):
+        for identifier in ("v7.4.1", "v7.40", "v7.4-beta", "invalid"):
+            with self.subTest(identifier=identifier):
+                self.assertIsNone(watch.release_changelog({identifier: "Other notes"}, "v7.4.0"))
+        self.assertIsNone(watch.release_changelog({"invalid": "Other notes"}, "invalid"))
+
+    def test_equivalent_changelog_aliases_require_consistent_text(self):
+        self.assertEqual(watch.release_changelog({"v7.4": "", "v7.4.0": ""}, "v7.4.0"), "")
+        self.assertEqual(watch.release_changelog({"v7.4": "Same", "v7.4.0": "Same"}, "v7.4.0"), "Same")
+        with self.assertRaisesRegex(watch.WatchError, "CHANGELOG_RELEASE_AMBIGUOUS"):
+            watch.release_changelog({"v7.4": "First", "v7.4.0": "Different"}, "v7.4.0")
+
+    def test_collect_conflicting_alias_does_not_discard_other_security_evidence(self):
+        baseline = {"tag_name": "v7.3.3", "published_at": "2026-10-21T00:00:00Z",
+                    "body": "Baseline", "html_url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.3"}
+        ambiguous = dict(baseline, tag_name="v7.4.0",
+                         html_url=baseline["html_url"].replace("7.3.3", "7.4.0"))
+        security = dict(baseline, tag_name="v7.4.1", body="Fix CVE-2026-12345",
+                        html_url=baseline["html_url"].replace("7.3.3", "7.4.1"))
+        html = ('<article class="entry" id="v7.3.3">Baseline</article>'
+                '<article class="entry" id="v7.4">First</article>'
+                '<article class="entry" id="v7.4.0">Different</article>'
+                '<article class="entry" id="v7.4.1">Security notes</article>')
+        sources = watch.collect(FakeHttp([([ambiguous, security, baseline], {}), ([], {})], html.encode()), CONFIG)
+        self.assertEqual([error.code for error in sources.errors], ["CHANGELOG_RELEASE_AMBIGUOUS"])
+        self.assertEqual(sources[0]["tag"], "v7.4.1")
+        self.assertTrue(sources[0]["complete"])
+        self.assertFalse(next(source for source in sources if source["tag"] == "v7.4.0")["complete"])
+
     def test_changelog_fail_closed(self):
         for html in ("<html>Bad Gateway</html>", '<article class="entry" id="v7.3.3">unfinished'):
             with self.assertRaises(watch.WatchError):

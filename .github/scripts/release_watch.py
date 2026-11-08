@@ -183,6 +183,17 @@ def parse_changelog(html):
     return parser.entries
 
 
+def release_changelog(entries, tag):
+    wanted = version(tag)
+    matches = [text for identifier, text in entries.items()
+               if wanted is not None and version(identifier) == wanted]
+    if not matches:
+        return None
+    if any(text != matches[0] for text in matches[1:]):
+        raise WatchError("CHANGELOG_RELEASE_AMBIGUOUS")
+    return matches[0]
+
+
 def public_url(url, prefix):
     if not isinstance(url, str) or not url.startswith(prefix):
         raise WatchError("SOURCE_URL_INVALID")
@@ -257,17 +268,23 @@ def collect(http, config):
     baseline_date = None
     for release in releases:
         tag = release["tag_name"]
-        if tag not in changelog:
-            errors.append(WatchError("CHANGELOG_RELEASE_MISSING"))
+        try:
+            notes = release_changelog(changelog, tag)
+        except WatchError as error:
+            errors.append(error)
+            notes = None
+        else:
+            if notes is None:
+                errors.append(WatchError("CHANGELOG_RELEASE_MISSING"))
         body = release.get("body") or ""
         if not isinstance(body, str):
             raise WatchError("RELEASE_BODY_INVALID")
-        source = {"release_notes": " ".join(body.split()), "changelog": changelog.get(tag, "")}
+        source = {"release_notes": " ".join(body.split()), "changelog": notes if notes is not None else ""}
         if version(tag) == baseline:
             baseline_date = release.get("published_at")
         candidates.append({"id": "release:" + tag, "tag": tag,
                            "url": public_url(release.get("html_url"), "https://github.com/telegramdesktop/tdesktop/releases/tag/"),
-                           "text": json.dumps(source, ensure_ascii=False), "kind": "release", "complete": tag in changelog})
+                           "text": json.dumps(source, ensure_ascii=False), "kind": "release", "complete": notes is not None})
     if not isinstance(baseline_date, str) or not re.fullmatch(r"\d{4}-\d\d-\d\dT.*Z", baseline_date):
         raise WatchError("BASELINE_DATE_INVALID")
     try:
