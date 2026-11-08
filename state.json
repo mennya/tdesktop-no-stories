@@ -1,11 +1,11 @@
 {
   "failures": {},
   "installed_tag": "v7.3.3",
-  "last_check_at": "2026-11-08T16:57:49+00:00",
+  "last_check_at": "2026-11-08T17:12:56+00:00",
   "last_counts": {
-    "changed": 1,
+    "changed": 0,
     "deferred": 0,
-    "model_calls": 1,
+    "model_calls": 0,
     "notifications": 0,
     "sources": 4
   },
