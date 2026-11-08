@@ -62,7 +62,9 @@ the actual changed sources, and release publication requires a successful run
 for that exact commit.
 
 Daily upstream release monitoring runs in GitHub Actions and sends important
-update notices through Pushover. See [monitor setup and recovery](docs/release-watch.md).
+update notices through Pushover. Equivalent stable labels such as `7.4` and
+`7.4.0` are matched without changing notification identities. See
+[monitor setup and recovery](docs/release-watch.md).
 
 See [build, packaging and verification instructions](docs/building-no-stories.md).
 The feature list describes the intended behavior; a compiler pass alone does not

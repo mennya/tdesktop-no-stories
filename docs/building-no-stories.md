@@ -44,8 +44,8 @@ Source/build changes on the release branch then create **production** packages.
 Changes confined to the ignored documentation/monitor paths do not automatically
 trigger a build. A green manual dispatch alone did not satisfy this repository's
 protected-branch admission; publication needs successful push-triggered candidate
-checks. The trigger-policy follow-up is tracked in
-[issue #362](https://gitlab.taild93257.ts.net/root/wiki/-/work_items/362).
+checks. Manual dispatch remains useful for diagnostics, but does not replace
+those publication checks.
 Manual `build_kind=verification` on the release branch still produces clearly
 marked test packages after the same candidate check. The default is production.
 

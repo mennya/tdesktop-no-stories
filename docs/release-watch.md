@@ -95,6 +95,7 @@ python3 -m unittest discover -s .github/scripts -p 'test_release_watch.py' -v
 
 Changes confined to the workflow's listed monitor files or docs/** do not trigger
 an automatic Windows build. The root README is outside that filter. Publication
-still needs eligible candidate checks; a manual-only validation was rejected by
-branch protection in [issue #362](https://gitlab.taild93257.ts.net/root/wiki/-/work_items/362).
+still needs eligible candidate checks. In this repository, a successful manual
+validation alone did not satisfy protected-branch admission; use successful
+push-triggered candidate checks for publication.
 Actual application/build changes retain their existing build behavior.
