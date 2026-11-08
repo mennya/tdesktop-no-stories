@@ -1,6 +1,6 @@
 # Building Telegram No Stories for Windows
 
-This fork builds Windows x64 with Qt 6 from upstream stable tag **v7.3.5**.
+This fork builds Windows x64 with Qt 6 from upstream stable tag **v7.4.1**.
 The `No Stories Windows x64` workflow produces a Release executable, a portable
 ZIP, an unsigned installer and SHA-256 checksums. The first dependency build can
 take several hours. Later runs reuse separate build-tool, library and Qt caches.
@@ -12,11 +12,39 @@ paid runner or cache-storage increase is enabled automatically.
 
 ## Build modes
 
-Source/build changes pushed to the trusted `codex/no-stories` branch create **production** packages
-using this repository's API secrets. Documentation and release-monitor-only
-changes do not trigger a build. An explicit manual `build_kind=verification`
-run uses Telegram's limited test credentials. Those filenames and README clearly
-mark them as verification-only; do not use them as a daily client.
+Prepare each update in a `codex/candidate/<slug>` branch based on the current
+`codex/no-stories` head. Keep the upstream merge and personal changes in separate
+commits. A push starts a **validation** run with public test API configuration,
+the production MSVC/SDK and Release flags. Only the release branch can receive
+repository API credentials. Candidate runs finish with compilation and produce
+no installation packages.
+
+The validation helper derives changed paths from Git and maps source files to
+real Release objects in `compile_commands.json`. Header, build recipe, resource,
+schema, dependency and unknown-source changes select the full `Telegram` target.
+Known macOS/Linux-only source files are excluded from Windows object selection.
+The compiler collects up to eight failures per validation run. Model tests remain
+an earlier logic check.
+
+After both `regression-models` and `Windows validation` succeed for the exact
+candidate head, promote it from the clean candidate checkout:
+
+```sh
+python3 Telegram/build/no-stories/ci.py promote \
+  --commit <full-checked-head> --expected-base <current-release-head>
+```
+
+The helper requires the latest trusted candidate run to pass and checks that the
+release branch still matches the expected base before a normal fast-forward
+push. A moved base requires integration and fresh validation. Release-branch
+protection requires the same two GitHub Actions checks. The production workflow
+also verifies the exact candidate run before its Windows job can start.
+
+Source/build changes on the release branch then create **production** packages.
+Documentation and release-monitor-only changes do not automatically trigger a
+build; a candidate can be validated with manual workflow dispatch when needed.
+Manual `build_kind=verification` on the release branch still produces clearly
+marked test packages after the same candidate check. The default is production.
 
 For a **production** build, obtain your own API credentials through
 [Telegram API development tools](https://core.telegram.org/api/obtaining_api_id),
@@ -56,11 +84,12 @@ and cache keys are independent of this application-output path handling.
 
 Avatar policy definitions live in the `Telegram` application target, where the
 model and MTProto PCH prerequisites exist. The low-level `td_ui` userpic renderer
-must not include `data_user.h`. Before the full app build, CI compiles the
-renderer and policy objects separately using their real generated Release
-commands. A required small Ninja Multi-Config fixture first verifies exact-object
-selection and confirms that Debug and unrelated sources remain unbuilt. This
-checks the target/PCH boundary missed by the model-only avatar tests.
+must not include `data_user.h`. The automatic compilation scope covers changed
+renderer/policy sources and expands to the full target for headers or uncertain
+inputs. Legacy avatar/strict-mute object commands remain available for diagnosis.
+A required Ninja Multi-Config fixture verifies exact Release object selection,
+excludes Debug/unrelated objects and reproduces two private-member errors before
+accepting corrected sources. These checks complement the model tests.
 
 The portable ZIP includes `TelegramForcePortable`, which upstream's
 `CheckPortableVersionFolder()` uses for isolated account storage. Extract the
@@ -168,6 +197,8 @@ it does not compile the application or exercise Qt painting or the UI.
 Run the strict-mute regression checks with the same Python/C++20 environment:
 
 ```sh
+python3 Telegram/build/no-stories/test_ci.py
+python3 Telegram/build/no-stories/test_changed.py
 python3 Telegram/build/no-stories/test_strict_mute_order.py
 python3 Telegram/build/no-stories/test_strict_mute_unread.py
 python3 Telegram/build/no-stories/test_strict_mute_calls.py

@@ -110,6 +110,62 @@ def strict_mute_targets(entries, build):
     return release_object_targets(entries, build, STRICT_MUTE_SOURCES)
 
 
+def changed_source_targets(entries, build, paths):
+    broad_suffixes = {
+        ".h", ".hh", ".hpp", ".hxx", ".inl", ".inc", ".ipp", ".tpp",
+        ".cmake", ".style", ".strings", ".qrc", ".tl",
+    }
+    source_suffixes = {".c", ".cc", ".cpp", ".cxx"}
+    broad_prefixes = (
+        "cmake/", "Telegram/cmake/", "Telegram/build/", "Telegram/Resources/",
+        "Telegram/ThirdParty/", "Telegram/lib_",
+    )
+    for name in paths:
+        path = PurePosixPath(name)
+        if path.is_absolute() or ".." in path.parts or "\\" in name or ":" in name:
+            raise ValueError("Changed input must be a repository-relative path.")
+    for name in paths:
+        path = PurePosixPath(name)
+        if (
+            path.name == "CMakeLists.txt"
+            or path.suffix.lower() in broad_suffixes
+            or name == ".gitmodules"
+            or name == ".github/workflows/no-stories-windows.yml"
+            or name.startswith(broad_prefixes)
+            or path.name in ("CMakePresets.json", "CMakeUserPresets.json")
+            or (name.startswith("Telegram/SourceFiles/")
+                and path.suffix.lower() not in source_suffixes | {".md", ".mm", ".m"})
+        ):
+            return ["Telegram"], "Full build required by " + name
+    sources = [
+        name for name in paths
+        if PurePosixPath(name).suffix.lower() in source_suffixes
+        and "/platform/mac/" not in name
+        and "/platform/linux/" not in name
+    ]
+    if not sources:
+        return [], "No Windows C/C++ or build inputs changed."
+    if len(sources) > 64:
+        return ["Telegram"], "Large source change; use the full target within Windows command limits."
+    try:
+        return release_object_targets(entries, build, sources), "Changed Windows compilation units."
+    except ValueError as error:
+        if "found 0" not in str(error):
+            raise
+        return ["Telegram"], "A changed source is not mapped; use the full Windows target."
+
+
+def changed_paths(root, base):
+    if not re.fullmatch(r"[0-9a-f]{40}", base or "") or base == "0" * 40:
+        raise ValueError("Changed-source selection requires a complete baseline commit.")
+    subprocess.run(["git", "merge-base", "--is-ancestor", base, "HEAD"], cwd=root, check=True, capture_output=True)
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--no-renames", "-z", base, "HEAD", "--"],
+        cwd=root, check=True, capture_output=True,
+    )
+    return result.stdout.decode("utf-8").rstrip("\0").split("\0") if result.stdout else []
+
+
 def validate_compiler_paths(entries):
     longest = 0
     for entry in entries:
@@ -133,7 +189,10 @@ def main():
         "external_qt_static_plugins_kimageformats",
         "personal-avatar-objects",
         "strict-mute-objects",
+        "changed-objects",
     ), default="Telegram")
+    parser.add_argument("--base-commit")
+    parser.add_argument("--max-failures", type=int, choices=range(1, 33), default=1)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[3]
     build = root / "out"
@@ -142,14 +201,24 @@ def main():
         "personal-avatar-objects": personal_avatar_targets,
         "strict-mute-objects": strict_mute_targets,
     }
-    selector = selectors.get(args.target)
-    targets = selector(entries, build) if selector else [args.target]
+    if args.target == "changed-objects":
+        paths = changed_paths(root, args.base_commit)
+        targets, reason = changed_source_targets(entries, build, paths)
+        print(json.dumps({"baseline": args.base_commit, "changed_inputs": paths, "selection": reason, "targets": targets}), flush=True)
+    else:
+        if args.base_commit:
+            parser.error("--base-commit is only valid with changed-objects.")
+        selector = selectors.get(args.target)
+        targets = selector(entries, build) if selector else [args.target]
     longest = validate_compiler_paths(entries)
     print(f"Validated {len(entries)} compiler outputs; longest path: {longest} characters.", flush=True)
+    if not targets:
+        return
     print(f"Building {args.target} in canonical directory: {build}", flush=True)
     subprocess.run([
         "cmake", "--build", str(build), "--config", "Release",
         "--target", *targets, "--parallel", "4",
+        "--", "-k", str(args.max_failures),
     ], cwd=build, check=True)
 
 

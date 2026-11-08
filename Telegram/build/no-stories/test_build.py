@@ -176,6 +176,13 @@ def ninja_fixture(mode):
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text(f"int fixture_{index}() {{ return {index}; }}\n", encoding="utf-8")
         root.joinpath("unselected.cpp").write_text("#error Unselected source must not compile\n", encoding="utf-8")
+        for name in ("bad_a", "bad_b"):
+            root.joinpath(name + ".cpp").write_text(
+                "class Base { public: virtual int value() { return 1; } };\n"
+                "class Derived : public Base { private: int value() override { return 2; } };\n"
+                "int compile_error() { Derived value; return value.value(); }\n",
+                encoding="utf-8",
+            )
         root.joinpath("CMakeLists.txt").write_text(
             'cmake_minimum_required(VERSION 3.20)\n'
             'project(SelectedReleaseObjects LANGUAGES CXX)\n'
@@ -183,7 +190,9 @@ def ninja_fixture(mode):
             'set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n'
             f'add_library(low OBJECT {sources[0]})\n'
             f'add_library(app OBJECT {" ".join(sources[1:])})\n'
-            'add_library(unselected OBJECT unselected.cpp)\n',
+            'add_library(unselected OBJECT unselected.cpp)\n'
+            'add_library(bad_a OBJECT bad_a.cpp)\n'
+            'add_library(bad_b OBJECT bad_b.cpp)\n',
             encoding="utf-8",
         )
         subprocess.run([
@@ -206,6 +215,18 @@ def ninja_fixture(mode):
             if any(path.is_file() for path in others if path not in selected):
                 raise RuntimeError(f"{label} object build unexpectedly compiled Debug or unselected sources.")
             print(f"PASS: Ninja Multi-Config built only {len(targets)} selected {label} Release objects.")
+        command = [
+            "cmake", "--build", str(build), "--config", "Release",
+            "--target", "bad_a", "bad_b", "--parallel", "1", "--", "-k", "2",
+        ]
+        failed = subprocess.run(command, capture_output=True, text=True, timeout=60)
+        diagnostic = (failed.stdout or "") + (failed.stderr or "")
+        if not failed.returncode or diagnostic.count("FAILED:") < 2:
+            raise RuntimeError("Bounded validation did not report both private-member errors.")
+        for name in ("bad_a", "bad_b"):
+            root.joinpath(name + ".cpp").write_text("int corrected() { return 1; }\n", encoding="utf-8")
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=60)
+        print("PASS: bounded Ninja diagnostics found two compile errors and accepted both fixes.")
 
 
 def main():

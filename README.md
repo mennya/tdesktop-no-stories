@@ -1,6 +1,6 @@
 # Telegram Desktop — No Stories
 
-Personal Windows x64 fork of Telegram Desktop, based on upstream **v7.3.5**.
+Personal Windows x64 fork of Telegram Desktop, based on upstream **v7.4.1**.
 It keeps messaging available while reducing visual distractions and allowing
 selected chats to stay quiet.
 
@@ -56,6 +56,10 @@ Packages are **unsigned** and official automatic updates are disabled. To update
 close this fork completely, install the new fork package into the same location
 or replace the portable program files, and preserve `TelegramForcePortable`.
 Building production packages requires your own Telegram API credentials.
+
+Updates are prepared in a `codex/candidate/` branch. Windows validation checks
+the actual changed sources, and release publication requires a successful run
+for that exact commit.
 
 See [build, packaging and verification instructions](docs/building-no-stories.md).
 The feature list describes the intended behavior; a compiler pass alone does not
