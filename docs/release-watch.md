@@ -16,6 +16,11 @@ It checks versions since the installed baseline, including edited release
 information. Prereleases are excluded. Missing sources and parser errors fail
 the run rather than imply that there are no updates.
 
+Stable version identity uses numeric major/minor/patch values: v7.4.0 on
+GitHub and v7.4 in the changelog match. Release tags, URLs and notification-state
+identities stay unchanged. Genuinely absent or conflicting notes still report
+an incomplete check; the collector keeps usable positive security evidence.
+
 New or changed information is classified using `gpt-6-luna` through the OpenAI
 Responses API. Public source text is treated as data, without tools or code
 execution. Requests disable response storage and use a strict JSON schema,
@@ -88,6 +93,8 @@ Run local checks with Python 3.12 or newer:
 python3 -m unittest discover -s .github/scripts -p 'test_release_watch.py' -v
 ```
 
-Changes limited to this monitor or documentation do not trigger a Windows build.
-Actual application/build changes and explicit build dispatches retain their
-existing behavior.
+Changes confined to the workflow's listed monitor files or docs/** do not trigger
+an automatic Windows build. The root README is outside that filter. Publication
+still needs eligible candidate checks; a manual-only validation was rejected by
+branch protection in [issue #362](https://gitlab.taild93257.ts.net/root/wiki/-/work_items/362).
+Actual application/build changes retain their existing build behavior.

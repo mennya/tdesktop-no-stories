@@ -61,6 +61,9 @@ Updates are prepared in a `codex/candidate/` branch. Windows validation checks
 the actual changed sources, and release publication requires a successful run
 for that exact commit.
 
+Daily upstream release monitoring runs in GitHub Actions and sends important
+update notices through Pushover. See [monitor setup and recovery](docs/release-watch.md).
+
 See [build, packaging and verification instructions](docs/building-no-stories.md).
 The feature list describes the intended behavior; a compiler pass alone does not
 establish interactive acceptance of a new build.

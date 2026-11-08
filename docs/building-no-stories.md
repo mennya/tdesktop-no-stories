@@ -41,8 +41,11 @@ protection requires the same two GitHub Actions checks. The production workflow
 also verifies the exact candidate run before its Windows job can start.
 
 Source/build changes on the release branch then create **production** packages.
-Documentation and release-monitor-only changes do not automatically trigger a
-build; a candidate can be validated with manual workflow dispatch when needed.
+Changes confined to the ignored documentation/monitor paths do not automatically
+trigger a build. A green manual dispatch alone did not satisfy this repository's
+protected-branch admission; publication needs successful push-triggered candidate
+checks. The trigger-policy follow-up is tracked in
+[issue #362](https://gitlab.taild93257.ts.net/root/wiki/-/work_items/362).
 Manual `build_kind=verification` on the release branch still produces clearly
 marked test packages after the same candidate check. The default is production.
 
