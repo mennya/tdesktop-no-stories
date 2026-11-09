@@ -119,19 +119,20 @@ def program_file(name):
 def payload_hashes(payload, expected_base):
     if len(payload) < 10 or payload[0] >= 225:
         raise UpdateError("Bad Windows LZMA header.")
-    properties = payload[0]
-    lc, rest = properties % 9, properties // 9
-    lp, pb = rest % 5, rest // 5
     dictionary, original = struct.unpack_from("<II", payload, 1)
     if not 4096 <= dictionary <= 128 * 1024 * 1024 or not 0 < original <= 1024 * 1024 * 1024:
         raise UpdateError("Windows LZMA bounds exceeded.")
     try:
-        decoder = lzma.LZMADecompressor(lzma.FORMAT_RAW, filters=[dict(
-            id=lzma.FILTER_LZMA1, dict_size=dictionary, lc=lc, lp=lp, pb=pb)])
-        uncompressed = decoder.decompress(payload[9:], max_length=original + 1)
+        # LzmaCompress emits no EOS marker. Its known output size is part of
+        # the Windows header; asking a raw decoder for one more byte can decode
+        # range-coder flush bits as extra output. Adapt the uint32 size to the
+        # standard LZMA-Alone uint64 header so liblzma enforces that boundary.
+        alone = payload[:5] + struct.pack("<Q", original) + payload[9:]
+        decoder = lzma.LZMADecompressor(lzma.FORMAT_ALONE, memlimit=256 * 1024 * 1024)
+        uncompressed = decoder.decompress(alone, max_length=original + 1)
     except lzma.LZMAError as error:
         raise UpdateError("Invalid Windows LZMA payload.") from error
-    if len(uncompressed) != original or decoder.unused_data:
+    if len(uncompressed) != original or not decoder.eof or decoder.unused_data:
         raise UpdateError("Incomplete or overlong Windows LZMA payload.")
     view, at = memoryview(uncompressed), 0
 

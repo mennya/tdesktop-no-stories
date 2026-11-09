@@ -99,6 +99,43 @@ class CounterTests(unittest.TestCase):
                 updates.counter_from_env(env)
 
 
+class WindowsPayloadTests(unittest.TestCase):
+    # Synthetic QDataStream compressed by the real LzmaCompress API (no EOS),
+    # ip7z/7zip commit d3296e39e1f1f92c7b41c0c3848e65640428d42d, C/LzmaLib.c.
+    # Settings match the shipping Packer (lc=4, lp=0, pb=2); 4 MiB dictionary.
+    payload = bytes.fromhex(
+        "5e000040007600000000001b9cce86ea488ebb0cacbbc7362c1dac4a329f3b529ea50a400c00edcd"
+        "add64bf90c574cb963d820b9f2d324b54f7dce1f39352ccb716e93c2a3cbb3b0b31dd1c39e22e530"
+        "4ba086063c5cb132290a074b85da23d0d07cdeac3279c6061ae3"
+    )
+
+    def test_sdk_stream_stops_at_its_declared_size(self):
+        self.assertEqual(updates.payload_hashes(self.payload, BASE), {
+            "Telegram.exe": "6e99b72f2d3a0c81f53a11e87bbb40077e1a635e77da6f2d4d93c44fad3a63a3",
+            "LICENSE": "20e2adbd8bf0da66031f56b084da95de2088fb6fa41a05a8174c6f6a027563fc",
+        })
+
+    def test_sdk_stream_rejects_truncation_and_trailing_compressed_bytes(self):
+        for payload in (self.payload[:-8], self.payload + b"trailing"):
+            with self.subTest(payload_size=len(payload)), self.assertRaises(updates.UpdateError):
+                updates.payload_hashes(payload, BASE)
+
+    def test_sdk_stream_rejects_inconsistent_declared_size(self):
+        original = struct.unpack_from("<I", self.payload, 5)[0]
+        for size in (original - 1, original + 1):
+            payload = bytearray(self.payload)
+            struct.pack_into("<I", payload, 5, size)
+            with self.subTest(size=size), self.assertRaises(updates.UpdateError):
+                updates.payload_hashes(payload, BASE)
+
+    def test_sdk_stream_preserves_dictionary_and_output_bounds(self):
+        for offset, size in ((1, 4095), (1, 256 * 1024 * 1024), (5, 0), (5, 1024 * 1024 * 1024 + 1)):
+            payload = bytearray(self.payload)
+            struct.pack_into("<I", payload, offset, size)
+            with self.subTest(offset=offset, size=size), self.assertRaises(updates.UpdateError):
+                updates.payload_hashes(payload, BASE)
+
+
 class SigningTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
