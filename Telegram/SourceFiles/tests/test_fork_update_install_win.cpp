@@ -79,6 +79,20 @@ int main() {
 		fixture.accountUnchanged();
 	}
 	{
+		const auto fixture = Fixture(root / L"renamed portable");
+		fs::rename(fixture.program / L"Telegram.exe", fixture.program / L"Quiet Client.exe");
+		const auto result = fixture.install(L"Quiet Client.exe");
+		Check(result.success, "renamed portable executable updates");
+		Check(Read(fixture.program / L"Quiet Client.exe") == "new executable", "portable executable name preserved");
+		Check(!fs::exists(fixture.program / L"Telegram.exe"), "no second executable created for renamed portable");
+		fixture.accountUnchanged();
+	}
+	{
+		const auto fixture = Fixture(root / L"invalid executable");
+		Check(!fixture.install(L"../outside.exe").success, "executable argument cannot leave program directory");
+		fixture.unchanged();
+	}
+	{
 		const auto fixture = Fixture(root / L"rollback");
 		Write(fixture.stage / L"fresh.dll", "new optional runtime");
 		const auto locked = CreateFileW((fixture.program / L"Telegram.exe").c_str(),

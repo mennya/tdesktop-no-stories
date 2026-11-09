@@ -37,6 +37,11 @@ selected chats to stay quiet.
   over the avatar in the icon-only list, even when Telegram's optional ordinary
   mute icon is disabled.
 
+- **Signed in-app updates:** checks this fork's published Windows x64 builds,
+  downloads updates in the background and installs them when you press Update.
+  Each fork build has its own number, including fixes within the same Telegram
+  version. Packages are authenticated with this fork's pinned update key.
+
 Strict mute is stored separately for each account on this device; it does not
 change server mute settings, read receipts or another client's behavior. Messages
 remain available when you open the chat. Turning strict mute off restores the
@@ -45,11 +50,6 @@ chat counters and notifications retain their normal behavior outside strict mute
 If Telegram has not yet supplied enough data to exclude a strict-muted chat from
 the archive total, the unresolved archive badge stays hidden until it can be
 computed accurately; unrelated chats keep their own counters.
-
-- **Signed in-app updates:** checks this fork's published Windows x64 builds,
-  downloads updates in the background and installs them when you press Update.
-  Each fork build has its own number, including fixes within the same Telegram
-  version. Packages are authenticated with this fork's pinned update key.
 
 ## Installation and updates
 
