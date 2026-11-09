@@ -81,11 +81,14 @@ QJsonObject Manifest(const Key &key) {
 		{QStringLiteral("x"), QString::fromLatin1(key.rawPublic().toBase64(
 			QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals))},
 	};
+	// Append explicitly: nested single-element braced QJsonArray construction
+	// may select the copy constructor on MSVC instead of wrapping the group.
+	auto groups = QJsonArray();
+	groups.append(QJsonArray{QStringLiteral("test-key")});
 	return {
 		{QStringLiteral("format"), 1}, {QStringLiteral("manifest_version"), 1},
 		{QStringLiteral("keys"), QJsonArray{entry}},
-		{QStringLiteral("channels"), QJsonObject{
-			{QStringLiteral("stable"), QJsonArray{QJsonArray{QStringLiteral("test-key")}}}}},
+		{QStringLiteral("channels"), QJsonObject{{QStringLiteral("stable"), groups}}},
 		{QStringLiteral("revoked"), QJsonArray{}},
 	};
 }
@@ -147,8 +150,10 @@ void Units() {
 	Check(key.pair != nullptr, "test Ed25519 key generated");
 	if (!key.pair) { return; }
 	const auto good = Feed(key, Release());
-	const auto parsed = Core::ForkUpdates::ParseFeed(good, key.publicPem());
+	auto feedError = QString();
+	const auto parsed = Core::ForkUpdates::ParseFeed(good, key.publicPem(), &feedError);
 	Check(parsed.has_value(), "root-authenticated fork feed accepted");
+	if (!parsed) { std::cerr << "Feed diagnostic: " << feedError.toStdString() << std::endl; }
 	if (parsed) {
 		Check(parsed->newerThan(7004001, 20000), "same Telegram version, newer fork build");
 		Check(!parsed->newerThan(7004001, 20010), "same fork build not offered again");
@@ -182,11 +187,14 @@ void Units() {
 	const auto running = MakeUpdateVersion(7004001, 20000);
 	const auto version = MakeUpdateVersion(7004001, 20010);
 	const auto blob = Envelope(key, target, version);
+	auto verifyError = QString();
 	const auto verify = [&](const QByteArray &data, quint64 current) {
 		return VerifyUpdate(data, Channel::Stable, false, target, current,
-			std::nullopt, key.publicPem(), QDateTime::currentSecsSinceEpoch());
+			std::nullopt, key.publicPem(), QDateTime::currentSecsSinceEpoch(), &verifyError);
 	};
-	Check(verify(blob, running).has_value(), "native verifier accepts signed fork revision");
+	const auto verified = verify(blob, running);
+	Check(verified.has_value(), "native verifier accepts signed fork revision");
+	if (!verified) { std::cerr << "Envelope diagnostic: " << verifyError.toStdString() << std::endl; }
 	Check(!verify(blob, version), "native verifier rejects replay");
 	auto corrupt = blob;
 	corrupt[corrupt.size() - 1] ^= 1;
