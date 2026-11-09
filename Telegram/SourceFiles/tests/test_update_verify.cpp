@@ -427,8 +427,14 @@ int main(int argc, char *argv[]) {
 			&error);
 		Check(embedded.has_value(), "embedded manifest verifies");
 		Check(embedded && embedded->version >= 1, "embedded manifest version");
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		Check(embedded && embedded->channels.size() == 1
+			&& embedded->channels.count(QByteArrayLiteral("stable")),
+			"fork manifest authorizes only stable");
+#else
 		Check(embedded && embedded->channels.size() == 4,
 			"embedded manifest lists all four channels");
+#endif
 		Check(embedded && !embedded->keys.empty(),
 			"embedded manifest has usable keys");
 	}

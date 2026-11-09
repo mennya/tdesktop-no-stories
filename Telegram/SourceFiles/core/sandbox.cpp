@@ -467,6 +467,7 @@ void Sandbox::socketError(QLocalSocket::LocalSocketError e) {
 	}
 #endif // !Q_OS_WINRT
 
+#ifndef TDESKTOP_FORK_AUTOUPDATE
 	if (!Core::UpdaterDisabled()
 		&& !cNoStartUpdate()
 		&& Core::checkReadyUpdate()) {
@@ -474,6 +475,7 @@ void Sandbox::socketError(QLocalSocket::LocalSocketError e) {
 		DEBUG_LOG(("Sandbox Info: installing update instead of starting app..."));
 		return Quit();
 	}
+#endif
 
 	if (cQuit()) {
 		return Quit();

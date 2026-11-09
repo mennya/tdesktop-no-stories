@@ -6,6 +6,9 @@ For license and copyright information please follow this link:
 https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "updater.h"
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+#include "fork_update_install_win.h"
+#endif
 
 #include "base/platform/win/base_windows_safe_library.h"
 
@@ -239,6 +242,20 @@ DWORD versionNum = 0, versionLen = 0, readLen = 0;
 WCHAR versionStr[32] = { 0 };
 
 bool update() {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	const auto installed = ForkUpdater::Install(L"tupdates\\temp", updateTo, exeName);
+	writeLog(installed.message);
+	if (!installed.success) {
+		auto message = installed.message;
+		if (!installed.recoveryDirectory.empty()) {
+			message += L"\nRecovery directory: " + installed.recoveryDirectory;
+		}
+		MessageBoxW(nullptr, message.c_str(), L"Telegram No Stories update", MB_OK | MB_ICONERROR);
+		return false;
+	}
+	delFolder();
+	return true;
+#else
 	writeLog(L"Update started..");
 
 	wstring updDir = L"tupdates\\temp", readyFilePath = L"tupdates\\temp\\ready", tdataDir = L"tupdates\\temp\\tdata";
@@ -258,6 +275,8 @@ bool update() {
 			versionNum = 0;
 		} else {
 			if (versionNum == 0x7FFFFFFF) { // alpha version
+
+			} else if (versionNum == 0x7FFFFFFD) { // personal fork version
 
 			} else if (versionNum == 0x7FFFFFFE) { // v2 canary version
 
@@ -394,9 +413,15 @@ bool update() {
 	writeLog(L"Update succeed! Clearing folder..");
 	delFolder();
 	return true;
+#endif
 }
 
 void updateRegistry() {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	// The Inno bootstrap registration is separate from official Telegram.
+	// Package updates never rename or modify the official installation.
+	return;
+#else
 	if (versionNum && versionNum != 0x7FFFFFFF && versionNum != 0x7FFFFFFE) {
 		writeLog(L"Updating registry..");
 		versionStr[versionLen / 2] = 0;
@@ -449,6 +474,7 @@ void updateRegistry() {
 			RegCloseKey(rkey);
 		}
 	}
+#endif
 }
 
 int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdParamarg, int cmdShow) {
@@ -554,8 +580,15 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdPara
 							error));
 					}
 				}
-				if (needupdate && update()) {
-					updateRegistry();
+				if (needupdate) {
+					if (!update()) {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+						closeLog();
+						return 1;
+#endif
+					} else {
+						updateRegistry();
+					}
 				}
 				if (writeprotected) { // if we can't clear all tupdates\ready (Updater.exe is there) - clear only version
 					if (DeleteFile(L"tupdates\\temp\\tdata\\version") || DeleteFile(L"tupdates\\ready\\tdata\\version")) {
@@ -643,7 +676,11 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdPara
 	return 0;
 }
 
-static const WCHAR *_programName = L"Telegram Desktop"; // folder in APPDATA, if current path is unavailable for writing
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+static const WCHAR *_programName = L"Telegram No Stories";
+#else
+static const WCHAR *_programName = L"Telegram Desktop";
+#endif // folder in APPDATA, if current path is unavailable for writing
 static const WCHAR *_exeName = L"Updater.exe";
 
 LPTOP_LEVEL_EXCEPTION_FILTER _oldWndExceptionFilter = 0;

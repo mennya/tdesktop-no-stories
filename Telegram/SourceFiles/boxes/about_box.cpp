@@ -154,6 +154,9 @@ namespace {
 
 [[nodiscard]] QString CurrentVersionText(bool withCommit) {
 	auto result = QString::fromLatin1(AppVersionStr);
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	result += Core::ForkUpdates::VersionSuffix();
+#endif
 	if (Core::BuildIsCanary) {
 		result += Core::CanaryVersionSuffix();
 	} else if (cAlphaVersion()) {

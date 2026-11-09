@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #pragma once
 
 #include "core/update_verify.h"
+#include "core/fork_update.h"
 #include "core/version.h"
 
 #include <QtCore/QString>
@@ -65,10 +66,14 @@ inline constexpr auto CanaryPrivateChannelId
 inline constexpr auto CanaryMetadataMessageId
 	= int(TDESKTOP_CANARY_METADATA_MSG_ID);
 
-[[nodiscard]] inline constexpr quint64 RunningUpdateVersion() {
+[[nodiscard]] inline quint64 RunningUpdateVersion() {
 	return Updates::MakeUpdateVersion(
 		quint32(AppVersion),
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		ForkUpdates::BuildCounter());
+#else
 		CanaryBuildCounter);
+#endif
 }
 
 [[nodiscard]] inline QString CanaryVersionSuffix() {

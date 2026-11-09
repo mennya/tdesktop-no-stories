@@ -60,10 +60,17 @@ if (WIN32)
 endif()
 
 include(cmake/generate_update_keys.cmake)
-generate_update_keys(Telegram ${res_loc}/update)
+if (TDESKTOP_FORK_AUTOUPDATE)
+    generate_update_keys(Telegram ${res_loc}/no-stories/update)
+else()
+    generate_update_keys(Telegram ${res_loc}/update)
+endif()
 
 if (DESKTOP_APP_TEST_APPS OR TDESKTOP_BUILD_UPDATE_TESTS)
     include(cmake/test_update_verify.cmake)
+    if (TDESKTOP_FORK_AUTOUPDATE)
+        include(cmake/test_fork_update.cmake)
+    endif()
     if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE)
         include(cmake/test_update_unpack.cmake)
         if (WIN32 AND NOT build_winstore)
@@ -628,6 +635,8 @@ PRIVATE
     core/ton_explorer_url.h
     core/ui_integration.cpp
     core/ui_integration.h
+    core/fork_update.cpp
+    core/fork_update.h
     core/update_channel.h
     core/update_checker.cpp
     core/update_checker.h
@@ -2988,11 +2997,16 @@ target_prepare_qrc(Telegram)
 if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_winstore)
     add_executable(Updater WIN32)
     init_non_host_target(Updater)
+    if (TDESKTOP_FORK_AUTOUPDATE)
+        target_compile_definitions(Updater PRIVATE TDESKTOP_FORK_AUTOUPDATE)
+    endif()
 
     add_dependencies(Telegram Updater)
 
     nice_target_sources(Updater ${src_loc}
     PRIVATE
+        _other/fork_update_install_win.cpp
+        _other/fork_update_install_win.h
         _other/updater_win.cpp
         _other/updater_linux.cpp
         _other/updater_osx.m
@@ -3040,9 +3054,12 @@ if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_wins
         )
     endif()
 
-    if (DESKTOP_APP_SPECIAL_TARGET)
+    if (DESKTOP_APP_SPECIAL_TARGET OR TDESKTOP_FORK_AUTOUPDATE)
         add_executable(Packer)
         init_target(Packer)
+        if (TDESKTOP_FORK_AUTOUPDATE)
+            target_compile_definitions(Packer PRIVATE PACKER_DISABLE_PRIVATE TDESKTOP_FORK_AUTOUPDATE)
+        endif()
 
         add_dependencies(Telegram Packer)
 

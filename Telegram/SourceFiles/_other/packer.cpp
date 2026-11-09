@@ -189,7 +189,12 @@ void AppendLeU64(QByteArray &to, quint64 value) {
 // suffix the installers and portable archives carry after their version.
 [[nodiscard]] QString V2NameSuffix(Channel channel, quint32 counter) {
 	switch (channel) {
-	case Channel::Stable: return QString();
+	case Channel::Stable:
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		return QString("-fork-%1").arg(counter);
+#else
+		return QString();
+#endif
 	case Channel::Beta: return QString("-beta");
 	case Channel::CanaryPublic: return QString("-canary-%1").arg(counter);
 	case Channel::CanaryPrivate:
@@ -671,17 +676,25 @@ int main(int argc, char *argv[])
 	if (!V2UnsignedFile.isEmpty()) {
 		return EmbedV2Signatures();
 	} else if (V2Channel) {
+#ifndef TDESKTOP_FORK_AUTOUPDATE
 		const auto canary = (*V2Channel == Channel::CanaryPublic)
 			|| (*V2Channel == Channel::CanaryPrivate);
+#endif
 		if (AlphaVersion || BetaChannel) {
 			cout << "The -channel param cannot be combined with -alpha or -beta!\n";
 			return -1;
 		} else if (V2KeysLoc.isEmpty()) {
 			cout << "The -keys-loc param is required for -channel packing!\n";
 			return -1;
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		} else if (*V2Channel != Channel::Stable || !V2Counter) {
+			cout << "Fork packages require stable channel and a positive build counter!\n";
+			return -1;
+#else
 		} else if (canary != (V2Counter > 0)) {
 			cout << "Canary channels require a positive -counter, others require none!\n";
 			return -1;
+#endif
 		} else if (!V2EmbedSignatures.empty()) {
 			cout << "The -embed-signatures param requires -unsigned!\n";
 			return -1;

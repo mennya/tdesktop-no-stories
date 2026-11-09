@@ -1069,7 +1069,11 @@ void SetDefaultStatus(
 			checker.percent());
 		break;
 	case State::Ready:
-		texts->fire(tr::lng_settings_update_ready(tr::now));
+		texts->fire(tr::lng_settings_update_ready(tr::now)
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+			+ u" · "_q + Core::ForkUpdates::ReadyVersion(cWorkingDir())
+#endif
+		);
 		update->show();
 		break;
 	default:
@@ -1110,7 +1114,11 @@ void SubscribeToUpdateChecker(
 	}, options->lifetime());
 	checker.ready() | rpl::on_next([=] {
 		options->setAttribute(Qt::WA_TransparentForMouseEvents, false);
-		texts->fire(tr::lng_settings_update_ready(tr::now));
+		texts->fire(tr::lng_settings_update_ready(tr::now)
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+			+ u" · "_q + Core::ForkUpdates::ReadyVersion(cWorkingDir())
+#endif
+		);
 		update->show();
 		downloading->fire(false);
 	}, options->lifetime());
@@ -1186,6 +1194,7 @@ void BuildUpdateSection(SectionBuilder &builder, bool atTop) {
 	builder.scope([&] {
 		install = (cAlphaVersion()
 			|| Core::BuildIsCanary
+			|| Core::ForkUpdates::BuildCounter()
 			|| KSandbox::isInside())
 			? nullptr
 			: builder.addButton({
@@ -1258,13 +1267,20 @@ void BuildUpdateSection(SectionBuilder &builder, bool atTop) {
 		SetDefaultStatus(checker, texts, downloading, update, version);
 
 		update->setClickedCallback([] {
-			if (!Core::UpdaterDisabled()) {
-				Core::checkReadyUpdate();
-			}
-			Core::Restart();
+			Core::InstallReadyUpdate();
 		});
 	}
 
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	if (const auto changes = builder.addButton({
+		.id = u"advanced/fork_release_notes"_q,
+		.title = rpl::single(u"What's new in this build"_q),
+	})) {
+		changes->addClickHandler([] {
+			UrlClickHandler::Open(Core::ForkUpdates::ReleasesUrl());
+		});
+	}
+#endif
 	builder.addSkip();
 	if (atTop) {
 		builder.addDivider();
@@ -1467,6 +1483,7 @@ void SetupUpdate(not_null<Ui::VerticalLayout*> container) {
 	const auto inner = options->entity();
 	const auto install = (cAlphaVersion()
 		|| Core::BuildIsCanary
+		|| Core::ForkUpdates::BuildCounter()
 		|| KSandbox::isInside())
 		? nullptr
 		: inner->add(object_ptr<Button>(
@@ -1552,10 +1569,7 @@ void SetupUpdate(not_null<Ui::VerticalLayout*> container) {
 		checker.start();
 	});
 	update->addClickHandler([] {
-		if (!Core::UpdaterDisabled()) {
-			Core::checkReadyUpdate();
-		}
-		Core::Restart();
+		Core::InstallReadyUpdate();
 	});
 }
 

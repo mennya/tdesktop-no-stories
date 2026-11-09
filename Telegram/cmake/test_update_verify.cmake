@@ -11,6 +11,9 @@
 
 add_executable(test_update_verify)
 init_target(test_update_verify "(tests)")
+if (TDESKTOP_FORK_AUTOUPDATE)
+    target_compile_definitions(test_update_verify PRIVATE TDESKTOP_FORK_AUTOUPDATE)
+endif()
 
 target_include_directories(test_update_verify PRIVATE ${src_loc})
 

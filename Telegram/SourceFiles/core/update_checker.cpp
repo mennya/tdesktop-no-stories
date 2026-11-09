@@ -350,7 +350,7 @@ QString FindUpdateFile() {
 	for (const auto &info : list) {
 		static const auto RegExpV2 = QRegularExpression(
 			"^td-update-(win|mac|linux)-(x86|x64|arm)-\\d+"
-			"(-beta|-canary-\\d+(-private)?)?$",
+			"(-beta|-canary-\\d+(-private)?|-fork-\\d+)?$",
 			QRegularExpression::CaseInsensitiveOption
 		);
 		if (RegExpV2.match(info.fileName()).hasMatch()) {
@@ -420,7 +420,11 @@ enum class ManifestAdoption {
 	std::wstring versionString = FormatVersionDisplay(version).toStdWString();
 
 	const auto versionNum = canaryVersion
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		? VersionInt(ForkUpdates::kVersionFileMarker)
+#else
 		? VersionInt(kVersionFileCanaryMarker)
+#endif
 		: VersionInt(version);
 	const auto versionLen = VersionInt(versionString.size() * sizeof(VersionChar));
 	VersionChar versionStr[32];
@@ -519,9 +523,11 @@ enum class ManifestAdoption {
 
 	tempDir.mkdir(tempDir.absolutePath());
 
+#ifndef TDESKTOP_FORK_AUTOUPDATE
 	const auto canary
 		= (verified->envelope.channel == Updates::Channel::CanaryPublic)
 		|| (verified->envelope.channel == Updates::Channel::CanaryPrivate);
+#endif
 	if (!Updates::ExtractUpdateFiles(
 			*uncompressed,
 			verified->envelope.version,
@@ -534,7 +540,11 @@ enum class ManifestAdoption {
 			tempDir,
 			tempDirPath,
 			Updates::UpdateVersionBase(verified->envelope.version),
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+			verified->envelope.version)) {
+#else
 			canary ? verified->envelope.version : 0)) {
+#endif
 		return false;
 	}
 
@@ -733,9 +743,14 @@ HttpChecker::HttpChecker(bool testing) : Checker(testing) {
 
 void HttpChecker::start() {
 	const auto updaterVersion = Platform::AutoUpdateVersion();
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	const auto path = ForkUpdates::FeedUrl();
+	Q_UNUSED(updaterVersion);
+#else
 	const auto path = Local::readAutoupdatePrefix()
 		+ qstr("/current")
 		+ (updaterVersion > 1 ? QString::number(updaterVersion) : QString());
+#endif
 	auto url = QUrl(path);
 	DEBUG_LOG(("Update Info: requesting update state"));
 	auto request = QNetworkRequest(url);
@@ -783,6 +798,21 @@ void HttpChecker::gotResponse() {
 }
 
 bool HttpChecker::handleResponse(const QByteArray &response) {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	auto error = QString();
+	const auto release = ForkUpdates::ParseFeed(
+		response,
+		Updates::RootPublicKeyPem(),
+		&error);
+	if (!release) {
+		LOG(("Update Error: Fork feed rejected: %1").arg(error));
+		return false;
+	}
+	done(release->newerThan(AppVersion, ForkUpdates::BuildCounter())
+		? std::make_shared<HttpLoader>(release->downloadUrl())
+		: nullptr);
+	return true;
+#else
 	const auto handle = [&](const QString &url) {
 		done(url.isEmpty() ? nullptr : std::make_shared<HttpLoader>(url));
 		return true;
@@ -793,6 +823,7 @@ bool HttpChecker::handleResponse(const QByteArray &response) {
 		return handle(*url);
 	}
 	return false;
+#endif
 }
 
 void HttpChecker::clearSentRequest() {
@@ -1765,11 +1796,15 @@ void Updater::start(bool forceWait) {
 				&_httpImplementation,
 				std::make_unique<HttpChecker>(_testing));
 		}
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		startImplementation(&_mtpImplementation, nullptr);
+#else
 		startImplementation(
 			&_mtpImplementation,
 			std::make_unique<MtpChecker>(
 				LookupCanaryPrivateSession(_session),
 				_testing));
+#endif
 
 		_checking.fire({});
 	} else {
@@ -2097,6 +2132,16 @@ bool checkReadyUpdate() {
 			LOG(("Update Error: legacy alpha update is not supported."));
 			ClearAll();
 			return false;
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		} else if (versionNum == ForkUpdates::kVersionFileMarker) {
+			auto forkVersion = quint64(0);
+			if (fVersion.read(reinterpret_cast<char*>(&forkVersion), sizeof(forkVersion))
+					!= sizeof(forkVersion)
+				|| forkVersion <= RunningUpdateVersion()) {
+				ClearAll();
+				return false;
+			}
+#endif
 		} else if (versionNum == kVersionFileCanaryMarker) {
 			quint64 canaryVersion = 0;
 			if (fVersion.read((char*)&canaryVersion, sizeof(quint64)) != sizeof(quint64)) {
@@ -2113,10 +2158,16 @@ bool checkReadyUpdate() {
 			LOG(("Update Error: cant install a non-canary version %1 on a private canary").arg(versionNum));
 			ClearAll();
 			return false;
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		} else {
+			ClearAll();
+			return false;
+#else
 		} else if (versionNum <= AppVersion) {
 			LOG(("Update Error: cant install version %1 having version %2").arg(versionNum).arg(AppVersion));
 			ClearAll();
 			return false;
+#endif
 		}
 		fVersion.close();
 	}
@@ -2195,6 +2246,15 @@ bool checkReadyUpdate() {
 #endif // Q_OS_MAC
 
 	return true;
+}
+
+void InstallReadyUpdate() {
+	if (!UpdaterDisabled()
+		&& UpdateChecker().state() == UpdateChecker::State::Ready
+		&& checkReadyUpdate()) {
+		cSetRestartingUpdate(true);
+		Restart();
+	}
 }
 
 void UpdateApplication() {

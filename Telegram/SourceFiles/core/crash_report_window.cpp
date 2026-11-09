@@ -973,6 +973,11 @@ void LastCrashedWindow::setUpdatingState(UpdatingState state, bool force) {
 			}
 		break;
 		case UpdatingReady:
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+			_updating.setText(u"Update ready. Open Telegram to install it."_q);
+			_sendingState = SendingNone;
+			break;
+#else
 			if (Core::checkReadyUpdate()) {
 				cSetRestartingUpdate(true);
 				Core::Quit();
@@ -982,6 +987,7 @@ void LastCrashedWindow::setUpdatingState(UpdatingState state, bool force) {
 				return;
 			}
 		break;
+#endif
 		case UpdatingCheck:
 			_updating.setText(u"Checking for updates..."_q);
 		break;

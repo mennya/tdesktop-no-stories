@@ -54,6 +54,7 @@ private:
 };
 
 bool checkReadyUpdate();
+void InstallReadyUpdate();
 void UpdateApplication();
 QString countAlphaVersionSignature(uint64 version);
 

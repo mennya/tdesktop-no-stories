@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+from fork_update_tools import counter_from_env, UpdateError
 
 
 def main():
@@ -22,7 +23,12 @@ def main():
             sys.exit("Production requires a valid TDESKTOP_API_HASH repository secret.")
         if api_id == "17349":
             sys.exit("Test credentials are not allowed in a production build.")
+    try:
+        counter = counter_from_env()
+    except UpdateError as error:
+        sys.exit(str(error))
     print("Build kind:", kind)
+    print("Fork build:", counter)
     if args.validate_only:
         return
     root = Path(__file__).resolve().parents[3]
@@ -46,7 +52,10 @@ def main():
             "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
             "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
             "-DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=",
-            "-DDESKTOP_APP_DISABLE_AUTOUPDATE=ON",
+            "-DDESKTOP_APP_DISABLE_AUTOUPDATE=OFF",
+            "-DTDESKTOP_FORK_AUTOUPDATE=ON",
+            f"-DTDESKTOP_FORK_BUILD_COUNTER={counter}",
+            "-DTDESKTOP_BUILD_UPDATE_TESTS=ON",
             "-DDESKTOP_APP_DISABLE_CRASH_REPORTS=ON",
         ], cwd=root / "Telegram", check=True)
     finally:

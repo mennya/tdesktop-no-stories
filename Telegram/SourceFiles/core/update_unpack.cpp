@@ -250,6 +250,22 @@ bool ExtractUpdateFiles(
 			SetError(error, "Bad update executable flag.");
 			return false;
 		}
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		const auto folded = name.toLower();
+		const auto programFile = (folded == QStringLiteral("telegram.exe"))
+			|| (folded == QStringLiteral("updater.exe"))
+			|| (folded == QStringLiteral("build-info.json"))
+			|| (folded == QStringLiteral("license"))
+			|| (folded == QStringLiteral("legal"))
+			|| (folded == QStringLiteral("readme.txt"))
+			|| (!folded.contains('/') && folded.endsWith(QStringLiteral(".dll")))
+			|| (folded.startsWith(QStringLiteral("modules/"))
+				&& folded.endsWith(QStringLiteral(".dll")));
+		if (!programFile) {
+			SetError(error, "Fork updates may contain only program files.");
+			return false;
+		}
+#endif
 		if (!SafeName(name) || !AddName(name, files, directories)) {
 			SetError(error, "Unsafe or conflicting update filename.");
 			return false;

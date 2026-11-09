@@ -37,6 +37,22 @@ if (TDESKTOP_API_ID STREQUAL "0" OR TDESKTOP_API_HASH STREQUAL "")
     " ")
 endif()
 
+option(TDESKTOP_FORK_AUTOUPDATE "Use the personal fork update channel." OFF)
+set(TDESKTOP_FORK_BUILD_COUNTER "0" CACHE STRING "Monotonic personal fork build number.")
+if (TDESKTOP_FORK_AUTOUPDATE)
+    if (NOT WIN32 OR DESKTOP_APP_DISABLE_AUTOUPDATE)
+        message(FATAL_ERROR "Fork updates require Windows with the updater enabled.")
+    endif()
+    if (NOT TDESKTOP_FORK_BUILD_COUNTER MATCHES "^[1-9][0-9]*$"
+        OR TDESKTOP_FORK_BUILD_COUNTER GREATER 4294967295)
+        message(FATAL_ERROR "TDESKTOP_FORK_BUILD_COUNTER must be a positive uint32.")
+    endif()
+    target_compile_definitions(Telegram PRIVATE TDESKTOP_FORK_AUTOUPDATE)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen)
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/gen/fork_update_build.h
+        "#pragma once\ninline constexpr auto ForkUpdateBuildCounter = ${TDESKTOP_FORK_BUILD_COUNTER}U;\n")
+endif()
+
 if (DESKTOP_APP_DISABLE_AUTOUPDATE)
     target_compile_definitions(Telegram PRIVATE TDESKTOP_DISABLE_AUTOUPDATE)
 endif()

@@ -2196,8 +2196,12 @@ void SetLaunchState(LaunchState state) {
 }
 
 void Restart() {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+   const auto updateReady = cRestartingUpdate();
+#else
    const auto updateReady = !UpdaterDisabled()
 	   && (UpdateChecker().state() == UpdateChecker::State::Ready);
+#endif
    if (updateReady) {
 	   cSetRestartingUpdate(true);
    } else {
