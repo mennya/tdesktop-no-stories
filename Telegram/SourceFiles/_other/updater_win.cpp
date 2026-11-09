@@ -554,6 +554,16 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdPara
 			writeLog(L"Invalid update process arguments; "
 				L"continuing without process handoff.");
 		}
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+		if (needupdate && !ForkUpdater::PerUserUpdateAllowed()) {
+			writeLog(L"Fork updates require a non-elevated per-user process.");
+			MessageBoxW(nullptr,
+				L"Automatic updates use a user-writable fork folder. Close administrator mode and use the normal client or the manual fork installer.",
+				L"Telegram No Stories update", MB_OK | MB_ICONERROR);
+			closeLog();
+			return ERROR_ELEVATION_REQUIRED;
+		}
+#endif
 		if (needupdate) writeLog(L"Need to update!");
 		if (autostart) writeLog(L"From autostart!");
 		if (writeprotected) writeLog(L"Write Protected folder!");

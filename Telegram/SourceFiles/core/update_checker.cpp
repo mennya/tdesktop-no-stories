@@ -19,6 +19,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/click_handler_types.h"
 #include "core/update_channel.h"
 #include "core/update_keys.h"
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+#include "_other/fork_update_install_win.h"
+#endif
 #include "core/update_unpack.h"
 #include "core/update_verify.h"
 #include "core/version.h"
@@ -2216,8 +2219,14 @@ bool checkReadyUpdate() {
 		LOG(("Update Error: could not copy '%1' to '%2', error code: %3"
 			).arg(updater.absoluteFilePath()).arg(curUpdater).arg(errorCode));
 		if (errorCode == ERROR_ACCESS_DENIED) { // we are in write-protected dir, like Program Files
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+			LOG(("Update Error: Fork updates require a user-writable install directory."));
+			ClearAll();
+			return false;
+#else
 			cSetWriteProtected(true);
 			return true;
+#endif
 		} else {
 			ClearAll();
 			return false;
@@ -2257,6 +2266,12 @@ bool checkReadyUpdate() {
 }
 
 void InstallReadyUpdate() {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	if (!ForkUpdater::PerUserUpdateAllowed()) {
+		LOG(("Update Error: Restart the fork without administrator mode to install updates."));
+		return;
+	}
+#endif
 	if (!UpdaterDisabled()
 		&& UpdateChecker().state() == UpdateChecker::State::Ready
 		&& checkReadyUpdate()) {

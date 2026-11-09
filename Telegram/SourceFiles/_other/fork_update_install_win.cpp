@@ -146,7 +146,8 @@ Result Install(
 		result.recoveryDirectory = backup.wstring();
 		for (auto i = size_t(0); i != entries.size(); ++i) {
 			auto &entry = entries[i];
-			entry.backup = backup / std::to_wstring(i);
+			entry.backup = backup / entry.target.lexically_relative(destination);
+			fs::create_directories(entry.backup.parent_path());
 			if (entry.existed && !CopyFileW(entry.target.c_str(), entry.backup.c_str(), TRUE)) {
 				result.error = GetLastError();
 				result.message = L"Could not back up program files; nothing was replaced.";
@@ -176,7 +177,7 @@ Result Install(
 				if (restored) {
 					std::error_code ignored;
 					fs::remove_all(backup, ignored);
-					result.recoveryDirectory.clear();
+					if (!ignored) { result.recoveryDirectory.clear(); }
 				}
 				return result;
 			}
@@ -185,7 +186,7 @@ Result Install(
 		result.message = L"Update installed.";
 		std::error_code ignored;
 		fs::remove_all(backup, ignored);
-		result.recoveryDirectory.clear();
+		if (!ignored) { result.recoveryDirectory.clear(); }
 		return result;
 	} catch (const fs::filesystem_error &error) {
 		result.error = DWORD(error.code().value());
@@ -193,6 +194,7 @@ Result Install(
 		return result;
 	}
 }
+
 
 void UpdateRegistration(const std::wstring &programDirectory, const std::wstring &executableName) {
 	const auto name = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{08DF0784-3B6C-44C3-8CBC-A7764CDB3C9E}_is1";

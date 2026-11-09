@@ -55,6 +55,15 @@ struct Fixture {
 } // namespace
 
 int main() {
+	auto token = HANDLE();
+	auto elevation = TOKEN_ELEVATION();
+	auto length = DWORD(0);
+	const auto queried = OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)
+		&& GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &length);
+	if (token) { CloseHandle(token); }
+	Check(queried, "own process elevation queried");
+	Check(ForkUpdater::PerUserUpdateAllowed() == bool(queried && !elevation.TokenIsElevated),
+		"actual elevated token cannot authorize a per-user automatic update");
 	const auto workspace = fs::canonical(fs::current_path());
 	const auto root = workspace / (L"fork-install-tests-" + std::to_wstring(GetCurrentProcessId())
 		+ L"-" + std::to_wstring(GetTickCount64()));

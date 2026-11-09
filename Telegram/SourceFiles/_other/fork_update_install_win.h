@@ -21,5 +21,14 @@ struct Result {
 	const std::wstring &stagingDirectory,
 	const std::wstring &programDirectory,
 	const std::wstring &executableName);
+[[nodiscard]] inline bool PerUserUpdateAllowed() {
+	auto token = HANDLE();
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token)) { return false; }
+	auto elevation = TOKEN_ELEVATION();
+	auto length = DWORD(0);
+	const auto checked = GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &length);
+	CloseHandle(token);
+	return checked && !elevation.TokenIsElevated;
+}
 void UpdateRegistration(const std::wstring &programDirectory, const std::wstring &executableName);
 } // namespace ForkUpdater

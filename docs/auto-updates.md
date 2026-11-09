@@ -22,6 +22,10 @@ also authenticates the v2 envelope before decompression, checks its target and
 rejects an installed or older revision. A higher fork counter can update the
 same Telegram version; an older Telegram base version is not accepted.
 
+Automatic installation is per-user, in a writable fork folder; it does not
+request elevation and the helper refuses an elevated update process. Protected
+locations use the manual installer instead.
+
 The package contains program files and runtime DLLs. Account directories,
 `tdata`, preferences and sessions are excluded. The updater backs up existing
 program files before replacement and restores completed replacements if a later
