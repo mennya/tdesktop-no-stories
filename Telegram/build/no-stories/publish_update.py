@@ -17,6 +17,8 @@ from fork_update_tools import (REPOSITORY, UpdateError, checksum_file, counter_f
 
 
 MAX_ARCHIVE = 2 * 1024 * 1024 * 1024
+RELEASE_PAGE_SIZE = 100
+MAX_RELEASE_PAGES = 5
 
 
 class ArtifactRedirect(urllib.request.HTTPRedirectHandler):
@@ -59,6 +61,41 @@ def api(path, missing_ok=False):
         raise UpdateError(f"GitHub API returned HTTP {error.code}.") from None
     except (urllib.error.URLError, TimeoutError):
         raise UpdateError("GitHub API request could not finish.") from None
+
+
+def validate_release(data):
+    if (not isinstance(data, dict) or type(data.get("id")) is not int or data["id"] <= 0
+            or not isinstance(data.get("tag_name"), str) or not data["tag_name"]
+            or type(data.get("draft")) is not bool):
+        raise UpdateError("Release lookup returned malformed metadata.")
+    return data
+
+
+def find_release(tag):
+    # The tag endpoint can return 404 for an existing draft. Only a genuine
+    # missing response permits the bounded authenticated list fallback.
+    existing = api(f"/repos/{REPOSITORY}/releases/tags/{tag}", missing_ok=True)
+    if existing is not None:
+        validate_release(existing)
+        if existing["tag_name"] != tag:
+            raise UpdateError("Release lookup returned another tag.")
+        return existing
+    matches = []
+    for page in range(1, MAX_RELEASE_PAGES + 1):
+        releases = api(f"/repos/{REPOSITORY}/releases?per_page={RELEASE_PAGE_SIZE}&page={page}")
+        if not isinstance(releases, list) or len(releases) > RELEASE_PAGE_SIZE:
+            raise UpdateError("Release list returned malformed metadata.")
+        for item in releases:
+            validate_release(item)
+            if item["tag_name"] == tag:
+                matches.append(item)
+        if len(matches) > 1:
+            raise UpdateError("Release lookup is ambiguous; no release was changed.")
+        # Scan through the final page even after a match, so ambiguous drafts
+        # or a truncated history never select a release for mutation.
+        if len(releases) < RELEASE_PAGE_SIZE:
+            return matches[0] if matches else None
+    raise UpdateError("Release lookup exceeded its bounded history; no release was changed.")
 
 
 def source_run(run_id, commit):
@@ -230,7 +267,7 @@ def publish(args):
         match = re.fullmatch(r"fork-v([0-9]+\.[0-9]+\.[0-9]+)-b([0-9]+)", latest.get("tag_name", ""))
         if not match or (version_base(match[1]), int(match[2])) >= (base, build):
             raise UpdateError("Publication would replace an unknown or newer latest release.")
-    existing = api(f"/repos/{REPOSITORY}/releases/tags/{tag}", missing_ok=True)
+    existing = find_release(tag)
     if existing and not existing.get("draft"):
         expected = {p.name: "sha256:" + sha256(p) for p in args.directory.iterdir() if p.is_file()}
         actual = {p["name"]: p.get("digest") for p in existing.get("assets", [])}
