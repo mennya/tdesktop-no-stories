@@ -21,4 +21,5 @@ struct Result {
 	const std::wstring &stagingDirectory,
 	const std::wstring &programDirectory,
 	const std::wstring &executableName);
+void UpdateRegistration(const std::wstring &programDirectory, const std::wstring &executableName);
 } // namespace ForkUpdater

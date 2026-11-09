@@ -46,16 +46,27 @@ If Telegram has not yet supplied enough data to exclude a strict-muted chat from
 the archive total, the unresolved archive badge stays hidden until it can be
 computed accurately; unrelated chats keep their own counters.
 
+- **Signed in-app updates:** checks this fork's published Windows x64 builds,
+  downloads updates in the background and installs them when you press Update.
+  Each fork build has its own number, including fixes within the same Telegram
+  version. Packages are authenticated with this fork's pinned update key.
+
 ## Installation and updates
 
 Use this fork's portable ZIP or installer. They keep account data in a separate
 `TelegramForcePortable` directory, independently of an official Telegram install.
 Do not install over the official client or import its session files.
 
-Packages are **unsigned** and official automatic updates are disabled. To update,
-close this fork completely, install the new fork package into the same location
-or replace the portable program files, and preserve `TelegramForcePortable`.
-Building production packages requires your own Telegram API credentials.
+Install the first bootstrap version manually. Later published fork updates are
+available through the client's Update button; ordinary startup and settings
+restarts leave a pending update untouched. Program files are replaced while
+`TelegramForcePortable` and local settings stay in place. Manual installation
+into the same fork directory remains available for recovery.
+
+Update packages and their discovery feed carry this fork's **Ed25519 signatures**.
+Windows executables and installers remain **unsigned by Authenticode**. Official
+Telegram update channels are excluded from this fork's updater. Production builds
+require your own Telegram API credentials. See [update publication and recovery](docs/auto-updates.md).
 
 Updates are prepared in a `codex/candidate/` branch. Windows validation checks
 the actual changed sources, and release publication requires a successful run

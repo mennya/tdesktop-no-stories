@@ -32,6 +32,10 @@ def main():
         sys.exit("Configured fork counter differs from the package counter.")
     version_text = (root / "Telegram" / "build" / "version").read_text()
     version = re.search(r"^AppVersionStrSmall\s+(\S+)$", version_text, re.M)[1]
+    if kind == "production" and (
+            re.search(r"^BetaChannel\s+(\S+)$", version_text, re.M)[1] != "0"
+            or re.search(r"^AlphaVersion\s+(\S+)$", version_text, re.M)[1] != "0"):
+        sys.exit("The fork update channel publishes stable builds only.")
     base = version_base(version)
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     name = f"telegram-no-stories-{version}-win-x64-{commit[:8]}-b{counter}-{kind}"

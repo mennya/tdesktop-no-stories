@@ -194,4 +194,52 @@ Result Install(
 	}
 }
 
+void UpdateRegistration(const std::wstring &programDirectory, const std::wstring &executableName) {
+	const auto name = L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{08DF0784-3B6C-44C3-8CBC-A7764CDB3C9E}_is1";
+	auto key = HKEY();
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, name, 0, KEY_QUERY_VALUE | KEY_SET_VALUE, &key) != ERROR_SUCCESS) {
+		return; // A portable copy has no installer registration.
+	}
+	try {
+		auto type = DWORD(0);
+		wchar_t location[32768] = {};
+		auto size = DWORD(sizeof(location));
+		if (RegQueryValueExW(key, L"InstallLocation", nullptr, &type,
+				reinterpret_cast<BYTE*>(location), &size) != ERROR_SUCCESS
+			|| type != REG_SZ || size < sizeof(wchar_t) || size > sizeof(location)) {
+			RegCloseKey(key);
+			return;
+		}
+		location[(sizeof(location) / sizeof(wchar_t)) - 1] = 0;
+		std::error_code error;
+		if (!fs::equivalent(programDirectory, location, error) || error) {
+			RegCloseKey(key);
+			return; // Updating one portable copy must not alter another install.
+		}
+		const auto executable = fs::path(programDirectory) / executableName;
+		auto unused = DWORD(0);
+		const auto length = GetFileVersionInfoSizeW(executable.c_str(), &unused);
+		if (!length || length > 1024 * 1024) {
+			RegCloseKey(key);
+			return;
+		}
+		auto bytes = std::vector<BYTE>(length);
+		VS_FIXEDFILEINFO *version = nullptr;
+		auto versionSize = UINT(0);
+		if (GetFileVersionInfoW(executable.c_str(), 0, length, bytes.data())
+			&& VerQueryValueW(bytes.data(), L"\\", reinterpret_cast<void**>(&version), &versionSize)
+			&& version && versionSize >= sizeof(VS_FIXEDFILEINFO)
+			&& version->dwSignature == 0xFEEF04BD) {
+			const auto text = std::to_wstring(HIWORD(version->dwProductVersionMS)) + L"."
+				+ std::to_wstring(LOWORD(version->dwProductVersionMS)) + L"."
+				+ std::to_wstring(HIWORD(version->dwProductVersionLS));
+			RegSetValueExW(key, L"DisplayVersion", 0, REG_SZ,
+				reinterpret_cast<const BYTE*>(text.c_str()), DWORD((text.size() + 1) * sizeof(wchar_t)));
+		}
+	} catch (const fs::filesystem_error &) {
+		// Registration metadata cannot invalidate an already completed file update.
+	}
+	RegCloseKey(key);
+}
+
 } // namespace ForkUpdater

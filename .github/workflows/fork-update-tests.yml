@@ -23,6 +23,7 @@ jobs:
       - name: Test isolated signer and native feed verification
         run: |
           python3 Telegram/build/no-stories/test_fork_update_tools.py
+          python3 Telegram/build/no-stories/test_publish_update.py
           python3 Telegram/build/no-stories/test_fork_update_native.py
   windows-transaction:
     runs-on: windows-2022
@@ -42,7 +43,7 @@ jobs:
       - name: Compile exact shipping file transaction
         run: |
           New-Item -ItemType Directory -Force -Path out/fork-tests | Out-Null
-          cl /nologo /std:c++20 /EHsc /W4 /WX /utf-8 /DNOMINMAX /DUNICODE /D_UNICODE /I Telegram/SourceFiles Telegram/SourceFiles/_other/fork_update_install_win.cpp Telegram/SourceFiles/tests/test_fork_update_install_win.cpp /Fo:out/fork-tests/ /Fe:out/fork-tests/test-fork-install.exe
+          cl /nologo /std:c++20 /EHsc /W4 /WX /utf-8 /DNOMINMAX /DUNICODE /D_UNICODE /I Telegram/SourceFiles Telegram/SourceFiles/_other/fork_update_install_win.cpp Telegram/SourceFiles/tests/test_fork_update_install_win.cpp /Fo:out/fork-tests/ /Fe:out/fork-tests/test-fork-install.exe /link version.lib advapi32.lib
           if ($LASTEXITCODE -ne 0) { throw 'Could not compile file transaction.' }
       - name: Verify replacement, account isolation and rollback
         run: |

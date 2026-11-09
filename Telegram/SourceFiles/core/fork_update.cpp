@@ -52,6 +52,14 @@ QString VersionSuffix() {
 	return QStringLiteral(" fork #%1").arg(BuildCounter());
 }
 
+QByteArray UserAgent() {
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	return QByteArray::fromRawData(ForkUpdateUserAgent, sizeof(ForkUpdateUserAgent) - 1);
+#else
+	return QByteArrayLiteral("Telegram-No-Stories");
+#endif
+}
+
 QString ReleasesUrl() {
 	return QStringLiteral("https://github.com/mennya/tdesktop-no-stories/releases");
 }

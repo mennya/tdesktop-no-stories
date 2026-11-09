@@ -14,6 +14,7 @@ inline constexpr auto kVersionFileMarker = quint32(0x7FFFFFFD);
 [[nodiscard]] quint32 BuildCounter();
 [[nodiscard]] QString VersionSuffix();
 [[nodiscard]] QString FeedUrl();
+[[nodiscard]] QByteArray UserAgent();
 [[nodiscard]] QString ReleasesUrl();
 
 struct Release {

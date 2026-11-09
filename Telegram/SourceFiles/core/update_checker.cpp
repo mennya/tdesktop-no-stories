@@ -468,8 +468,13 @@ enum class ManifestAdoption {
 		ManifestAdoption adoption) {
 	// The expected target follows the feed key, not the build: an x64
 	// build under Rosetta asks for armac and must accept that package.
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	const auto target = std::optional(Updates::Target{
+		Updates::Os::Windows, Updates::Arch::X64 });
+#else
 	const auto target = Updates::TargetFromPlatformKey(
 		Platform::AutoUpdateKey().toLatin1());
+#endif
 	if (!target) {
 		LOG(("Update Error: No v2 target for platform key '%1'."
 			).arg(Platform::AutoUpdateKey()));
@@ -754,6 +759,9 @@ void HttpChecker::start() {
 	auto url = QUrl(path);
 	DEBUG_LOG(("Update Info: requesting update state"));
 	auto request = QNetworkRequest(url);
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	request.setRawHeader("User-Agent", ForkUpdates::UserAgent());
+#endif
 	// Qt's HTTP/2 backend does not apply the read-buffer limit.
 	request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
 	_manager = std::make_unique<QNetworkAccessManager>();

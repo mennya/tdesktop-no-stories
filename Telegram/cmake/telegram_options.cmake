@@ -49,8 +49,8 @@ if (TDESKTOP_FORK_AUTOUPDATE)
     endif()
     target_compile_definitions(Telegram PRIVATE TDESKTOP_FORK_AUTOUPDATE)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/gen)
-    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/gen/fork_update_build.h
-        "#pragma once\ninline constexpr auto ForkUpdateBuildCounter = ${TDESKTOP_FORK_BUILD_COUNTER}U;\n")
+    configure_file(${res_loc}/no-stories/fork_update_build.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/gen/fork_update_build.h @ONLY)
 endif()
 
 if (DESKTOP_APP_DISABLE_AUTOUPDATE)

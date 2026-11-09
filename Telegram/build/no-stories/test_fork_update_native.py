@@ -24,7 +24,8 @@ def main():
             header += ",".join(str(x) for x in data) + "};\n"
         (work / "update_keys_data.h").write_text(header + "}\n")
         (work / "fork_update_build.h").write_text(
-            "#pragma once\ninline constexpr auto ForkUpdateBuildCounter = 40010U;\n")
+            "#pragma once\ninline constexpr auto ForkUpdateBuildCounter = 40010U;\n"
+            'inline constexpr char ForkUpdateUserAgent[] = "Telegram-No-Stories fork-build:40010 windows-x64";\n')
         cases = [
             ("fork", ["core/fork_update.cpp", "core/update_keys.cpp", "core/update_verify.cpp",
                       "core/update_unpack.cpp", "tests/test_fork_update.cpp"], True),

@@ -2999,6 +2999,7 @@ if (NOT DESKTOP_APP_DISABLE_AUTOUPDATE AND NOT build_macstore AND NOT build_wins
     init_non_host_target(Updater)
     if (TDESKTOP_FORK_AUTOUPDATE)
         target_compile_definitions(Updater PRIVATE TDESKTOP_FORK_AUTOUPDATE)
+        target_link_libraries(Updater PRIVATE version advapi32)
     endif()
 
     add_dependencies(Telegram Updater)

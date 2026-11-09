@@ -1,0 +1,125 @@
+name: Publish signed fork update
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run:
+        description: Successful No Stories production run ID
+        type: string
+        required: true
+      source_commit:
+        description: Exact full commit of that production run
+        type: string
+        required: true
+      fork_build:
+        description: Optional fork counter; defaults to the successor build
+        type: string
+        required: false
+      mode:
+        description: Stage a reviewed draft or publish the update channel
+        type: choice
+        options: [stage, publish]
+        default: stage
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: personal-fork-update-publication
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    if: github.ref == 'refs/heads/codex/no-stories'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: tdesktop-fork-updates
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      source_run: ${{ steps.prepare.outputs.source_run }}
+      source_sha: ${{ steps.prepare.outputs.source_sha }}
+      tag: ${{ steps.prepare.outputs.tag }}
+      build: ${{ steps.prepare.outputs.build }}
+    steps:
+      - name: Checkout trusted publication code and history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Authenticate artifacts and sign the fork package and feed
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TDESKTOP_UPDATE_SIGNING_KEY: ${{ secrets.TDESKTOP_UPDATE_SIGNING_KEY }}
+          SOURCE_RUN: ${{ inputs.source_run }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          SELECTED_BUILD: ${{ inputs.fork_build }}
+        run: |
+          args=(--run "$SOURCE_RUN" --commit "$SOURCE_COMMIT")
+          if [ -n "$SELECTED_BUILD" ]; then args+=(--build "$SELECTED_BUILD"); fi
+          python3 Telegram/build/no-stories/publish_update.py prepare "${args[@]}"
+      - name: Transfer only public signed release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: signed-fork-update
+          path: signed-release/*
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  verify-windows:
+    needs: sign
+    runs-on: windows-2022
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: ${{ needs.sign.outputs.source_run }}
+      SOURCE_COMMIT: ${{ needs.sign.outputs.source_sha }}
+    steps:
+      - name: Checkout trusted artifact download code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Download signed release and exact native verifier
+        run: |
+          gh run download $env:GITHUB_RUN_ID --repo mennya/tdesktop-no-stories --name signed-fork-update --dir signed-release
+          if ($LASTEXITCODE -ne 0) { throw 'Could not download signed files.' }
+          python Telegram/build/no-stories/publish_update.py verifier --run $env:SOURCE_RUN --commit $env:SOURCE_COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Native verifier artifact identity or digest did not match.' }
+      - name: Verify feed, signature, native decompression and executable hashes
+        run: |
+          & ./native-verifier/test_fork_update.exe --verify-release (Join-Path $env:GITHUB_WORKSPACE 'signed-release') $env:SOURCE_COMMIT
+          if ($LASTEXITCODE -ne 0) { throw 'Shipping Windows verification rejected the release.' }
+
+  publish:
+    needs: [sign, verify-windows]
+    if: github.ref == 'refs/heads/codex/no-stories'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: tdesktop-fork-updates
+    permissions:
+      contents: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: ${{ needs.sign.outputs.source_run }}
+      SOURCE_COMMIT: ${{ needs.sign.outputs.source_sha }}
+      RELEASE_MODE: ${{ inputs.mode }}
+    steps:
+      - name: Checkout trusted publication code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Publish the native-verified release
+        run: |
+          gh run download "$GITHUB_RUN_ID" --repo mennya/tdesktop-no-stories --name signed-fork-update --dir signed-release
+          python3 Telegram/build/no-stories/publish_update.py publish --run "$SOURCE_RUN" --commit "$SOURCE_COMMIT" --mode "$RELEASE_MODE"

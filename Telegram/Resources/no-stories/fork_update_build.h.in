@@ -1,0 +1,3 @@
+#pragma once
+inline constexpr auto ForkUpdateBuildCounter = @TDESKTOP_FORK_BUILD_COUNTER@U;
+inline constexpr char ForkUpdateUserAgent[] = "Telegram-No-Stories fork-build:@TDESKTOP_FORK_BUILD_COUNTER@ windows-x64";

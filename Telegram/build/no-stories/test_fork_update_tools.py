@@ -21,7 +21,7 @@ def pe():
     result[:2] = b"MZ"
     struct.pack_into("<I", result, 60, 128)
     result[128:134] = b"PE\0\0\x64\x86"
-    return bytes(result)
+    return bytes(result) + f"Telegram-No-Stories fork-build:{BUILD} windows-x64\0".encode()
 
 
 class Fixture:

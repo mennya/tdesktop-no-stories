@@ -73,6 +73,7 @@ jobs:
       - name: Check signed fork update artifacts and native verifier
         run: |
           python3 Telegram/build/no-stories/test_fork_update_tools.py
+          python3 Telegram/build/no-stories/test_publish_update.py
           python3 Telegram/build/no-stories/test_fork_update_native.py
 
       - name: Check extracted production behavior and object selection

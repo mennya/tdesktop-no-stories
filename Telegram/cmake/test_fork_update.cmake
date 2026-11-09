@@ -35,3 +35,5 @@ PRIVATE
     tests/test_fork_update_install_win.cpp
 )
 set_target_properties(test_fork_update_install PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+target_link_libraries(test_fork_update_install PRIVATE version advapi32)

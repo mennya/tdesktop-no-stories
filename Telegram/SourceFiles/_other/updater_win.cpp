@@ -418,8 +418,7 @@ bool update() {
 
 void updateRegistry() {
 #ifdef TDESKTOP_FORK_AUTOUPDATE
-	// The Inno bootstrap registration is separate from official Telegram.
-	// Package updates never rename or modify the official installation.
+	ForkUpdater::UpdateRegistration(updateTo, exeName);
 	return;
 #else
 	if (versionNum && versionNum != 0x7FFFFFFF && versionNum != 0x7FFFFFFE) {

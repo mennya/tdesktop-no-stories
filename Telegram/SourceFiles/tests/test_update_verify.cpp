@@ -351,7 +351,7 @@ void AppendLeU64(QByteArray &to, quint64 value) {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main() {
 	constexpr auto kNow = qint64(1800000000);
 	const auto payload = QByteArray("test-payload-not-really-lzma");
 

@@ -173,7 +173,7 @@ def payload_hashes(payload, expected_base):
 
 
 def portable_hashes(path, info):
-    result, folded = {}, set()
+    result, folded, total = {}, set(), 0
     with zipfile.ZipFile(path) as archive:
         if len(archive.infolist()) > 4096:
             raise UpdateError("Too many portable archive entries.")
@@ -184,7 +184,9 @@ def portable_hashes(path, info):
             if not item.filename.startswith(prefix):
                 raise UpdateError("Portable archive has an unexpected root.")
             name = item.filename[len(prefix):]
-            if name.lower() in folded or item.file_size > 1024 * 1024 * 1024:
+            total += item.file_size
+            if (name.lower() in folded or total > 1024 * 1024 * 1024
+                    or item.flag_bits & 1 or (item.external_attr >> 16) & 0o170000 == 0o120000):
                 raise UpdateError("Duplicate or oversized portable file.")
             folded.add(name.lower())
             if name == "TelegramForcePortable/KEEP-THIS-FOLDER.txt":
@@ -192,7 +194,15 @@ def portable_hashes(path, info):
             if not program_file(name):
                 raise UpdateError("Portable archive contains account data or an unsafe path.")
             with archive.open(item) as stream:
-                result[name] = hashlib.file_digest(stream, "sha256").hexdigest()
+                digest, carry, identity_found = hashlib.sha256(), b"", False
+                identity = f"Telegram-No-Stories fork-build:{info['fork_build']} windows-x64\0".encode()
+                while chunk := stream.read(1024 * 1024):
+                    digest.update(chunk)
+                    identity_found |= identity in carry + chunk
+                    carry = chunk[-len(identity):]
+                result[name] = digest.hexdigest()
+                if name == "Telegram.exe" and not identity_found:
+                    raise UpdateError("Executable does not contain the configured fork build identity.")
             if name == "build-info.json":
                 if item.file_size > 4096 or json.loads(archive.read(item)) != info:
                     raise UpdateError("Portable build manifest differs from release manifest.")
