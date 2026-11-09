@@ -51,6 +51,10 @@ Counters are `workflow_run_number * 1000 + workflow_attempt * 10`, followed by
 `+1` for the successor. Attempts above 99 require a fresh build run. Local builds
 provide an explicit positive uint32 `FORK_BUILD_COUNTER`.
 
+Before a full application build, Windows CI compiles the actual shipping helpers
+and the app's updater/settings/restart entry points, in addition to running the
+native verifier and transaction tests. This catches UI/include boundaries early.
+
 The Windows runner emits an unsigned native envelope. It never receives the
 update signing key. Run **Publish signed fork update** on `codex/no-stories`,
 with the exact successful production run ID and full source commit:

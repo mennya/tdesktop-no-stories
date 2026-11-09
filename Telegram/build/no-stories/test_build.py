@@ -10,9 +10,11 @@ import unittest
 
 from build import (
     PERSONAL_AVATAR_SOURCES,
+    FORK_UPDATE_SOURCES,
     STRICT_MUTE_SOURCES,
     compiler_output,
     personal_avatar_targets,
+    fork_update_targets,
     release_object_targets,
     strict_mute_targets,
     validate_compiler_paths,
@@ -134,6 +136,11 @@ class StrictMuteSelectionTests(ObjectSelectionTests):
     select = staticmethod(strict_mute_targets)
 
 
+class ForkUpdateSelectionTests(ObjectSelectionTests):
+    sources = FORK_UPDATE_SOURCES
+    select = staticmethod(fork_update_targets)
+
+
 class SourceSelectionTests(unittest.TestCase):
     def test_invalid_source_selection_is_rejected(self):
         build = PureWindowsPath("C:/Build Root/tdesktop/out")
@@ -170,7 +177,7 @@ def ninja_fixture(mode):
     with tempfile.TemporaryDirectory(prefix="telegram object targets-") as directory:
         root = Path(directory).resolve()
         build = root / "out"
-        sources = tuple(dict.fromkeys(PERSONAL_AVATAR_SOURCES + STRICT_MUTE_SOURCES))
+        sources = tuple(dict.fromkeys(PERSONAL_AVATAR_SOURCES + STRICT_MUTE_SOURCES + FORK_UPDATE_SOURCES))
         for index, relative in enumerate(sources):
             source = root / relative
             source.parent.mkdir(parents=True, exist_ok=True)
@@ -203,6 +210,7 @@ def ninja_fixture(mode):
         for label, selector in (
             ("personal avatars", personal_avatar_targets),
             ("strict mute", strict_mute_targets),
+            ("fork updater", fork_update_targets),
         ):
             targets = selector(entries, build)
             subprocess.run([
@@ -235,7 +243,7 @@ def main():
     args = parser.parse_args()
     suite = unittest.TestSuite(
         unittest.defaultTestLoader.loadTestsFromTestCase(case)
-        for case in (ObjectSelectionTests, StrictMuteSelectionTests, SourceSelectionTests)
+        for case in (ObjectSelectionTests, StrictMuteSelectionTests, ForkUpdateSelectionTests, SourceSelectionTests)
     )
     result = unittest.TextTestRunner(verbosity=1).run(suite)
     if not result.wasSuccessful():

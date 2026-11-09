@@ -12,6 +12,18 @@ PERSONAL_AVATAR_SOURCES = (
     "Telegram/SourceFiles/ui/peer/userpic_policy.cpp",
 )
 
+FORK_UPDATE_SOURCES = (
+    "Telegram/SourceFiles/settings/sections/settings_advanced.cpp",
+    "Telegram/SourceFiles/core/update_checker.cpp",
+    "Telegram/SourceFiles/core/application.cpp",
+    "Telegram/SourceFiles/core/sandbox.cpp",
+    "Telegram/SourceFiles/core/crash_report_window.cpp",
+    "Telegram/SourceFiles/dialogs/dialogs_widget.cpp",
+    "Telegram/SourceFiles/intro/intro_widget.cpp",
+    "Telegram/SourceFiles/boxes/about_box.cpp",
+)
+
+
 STRICT_MUTE_SOURCES = (
     "Telegram/SourceFiles/main/main_strict_mute.cpp",
     "Telegram/SourceFiles/main/main_session.cpp",
@@ -106,6 +118,10 @@ def personal_avatar_targets(entries, build):
     return release_object_targets(entries, build, PERSONAL_AVATAR_SOURCES)
 
 
+def fork_update_targets(entries, build):
+    return release_object_targets(entries, build, FORK_UPDATE_SOURCES)
+
+
 def strict_mute_targets(entries, build):
     return release_object_targets(entries, build, STRICT_MUTE_SOURCES)
 
@@ -189,6 +205,7 @@ def main():
         "external_qt_static_plugins_kimageformats",
         "personal-avatar-objects",
         "strict-mute-objects",
+        "fork-update-objects",
         "changed-objects",
     ), default="Telegram")
     parser.add_argument("--base-commit")
@@ -200,6 +217,7 @@ def main():
     selectors = {
         "personal-avatar-objects": personal_avatar_targets,
         "strict-mute-objects": strict_mute_targets,
+        "fork-update-objects": fork_update_targets,
     }
     if args.target == "changed-objects":
         paths = changed_paths(root, args.base_commit)

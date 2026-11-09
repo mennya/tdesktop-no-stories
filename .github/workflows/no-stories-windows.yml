@@ -230,6 +230,13 @@ jobs:
       - name: Verify generated Qt plugin compilation
         run: python TBuild/tdesktop/Telegram/build/no-stories/build.py --target external_qt_static_plugins_kimageformats
 
+      - name: Compile shipping helpers and updater application boundaries
+        run: |
+          cmake --build "$env:USERPROFILE/TBuild/tdesktop/out" --config Release --target Updater Packer --parallel 4 -- -k 8
+          if ($LASTEXITCODE -ne 0) { throw 'Shipping fork update helpers did not compile.' }
+          python TBuild/tdesktop/Telegram/build/no-stories/build.py --target fork-update-objects --max-failures 8
+          if ($LASTEXITCODE -ne 0) { throw 'Fork updater application boundaries did not compile.' }
+
       - name: Compile changed Windows inputs with bounded multi-error diagnostics
         if: env.PIPELINE == 'validation'
         env:
