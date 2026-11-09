@@ -149,6 +149,11 @@ void Units() {
 	const auto key = Key();
 	Check(key.pair != nullptr, "test Ed25519 key generated");
 	if (!key.pair) { return; }
+	const auto groups = Manifest(key).value(QStringLiteral("channels")).toObject()
+		.value(QStringLiteral("stable")).toArray();
+	Check(groups.size() == 1 && groups.first().isArray()
+		&& groups.first().toArray().size() == 1,
+		"test channel retains its required nested signature group");
 	const auto good = Feed(key, Release());
 	auto feedError = QString();
 	const auto parsed = Core::ForkUpdates::ParseFeed(good, key.publicPem(), &feedError);

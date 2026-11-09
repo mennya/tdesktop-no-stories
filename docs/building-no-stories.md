@@ -74,9 +74,11 @@ VS 2026 image's optional MSVC 14.44 compiler. Before preparing dependencies,
 the workflow verifies the selected versions, both ATL headers, and compilation,
 linking and execution of a small ATL probe. Ninja is used, so a Visual Studio
 2026 CMake generator is not required. It runs dependency preparation with Release
-libraries enabled, then builds the `Telegram` target. It does not build or ship
-the official updater, and compiles with `DESKTOP_APP_DISABLE_AUTOUPDATE=ON`.
-Crash report submission is also disabled for this personal build.
+libraries enabled, runs focused native updater checks, then builds `Telegram`,
+`Updater` and `Packer`. The fork enables its own signed update channel; the
+official HTTP and MTProto feeds remain excluded. The Windows runner creates an
+unsigned update envelope and never receives the update signing key. Crash report
+submission remains disabled for this personal build.
 
 The app build uses the resolved `USERPROFILE\TBuild\tdesktop\out` path instead
 of the longer workspace junction. CMake limits object paths to 220 characters;
@@ -103,12 +105,18 @@ shortcuts. It does not register URL handlers, start the app, import official
 account data, or delete account data during uninstall. Sign in normally.
 Do not extract or install this fork over an official Telegram folder.
 
-Packages include a source commit link, licensing files, executable hash and
-build mode. They are unsigned because no code-signing certificate is configured.
-Updates require a new reviewed fork build and manual installation. The inherited
-upstream workflows are retained in `.github/upstream-workflows`, outside the
-Actions discovery directory, so their bots and multi-platform pipelines do not
-run for this fork branch.
+Packages include a source commit link, licensing files, executable hashes,
+build mode and a fork revision. Executables and installers lack an Authenticode
+certificate. After one manual bootstrap installation, reviewed fork releases
+can download in the background and install through the explicit Update button.
+An isolated publication workflow signs and verifies the update feed and native
+envelope before making them available. See [Personal fork updates](auto-updates.md)
+for source admission, signing, publication and recovery. Manual replacement
+remains available; always preserve `TelegramForcePortable`.
+
+The inherited upstream workflows are retained in `.github/upstream-workflows`,
+outside the Actions discovery directory, so their bots and multi-platform
+pipelines do not run for this fork branch.
 
 ## Windows unread indicators
 
