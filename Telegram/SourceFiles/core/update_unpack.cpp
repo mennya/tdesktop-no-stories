@@ -122,7 +122,7 @@ std::optional<QByteArray> DecompressUpdatePayload(
 #else // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
 	constexpr auto kPropsSize = 0;
 #endif // Q_OS_WIN && !TDESKTOP_USE_PACKAGED
-	constexpr auto kHeaderSize = kPropsSize + sizeof(qint32);
+	constexpr auto kHeaderSize = qsizetype(kPropsSize + sizeof(qint32));
 	const auto &payload = verified.envelope.payload;
 	if (payload.size() <= kHeaderSize || payload.size() > kMaxPayloadSize) {
 		SetError(error, "Bad compressed payload size.");
