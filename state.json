@@ -1,7 +1,7 @@
 {
   "failures": {},
   "installed_tag": "v7.3.3",
-  "last_check_at": "2026-11-09T18:21:08+00:00",
+  "last_check_at": "2026-11-10T16:06:35+00:00",
   "last_counts": {
     "changed": 0,
     "deferred": 0,
@@ -9,7 +9,8 @@
     "notifications": 0,
     "sources": 4
   },
-  "last_status": "ok",
+  "last_error": "STATE_HTTP_500",
+  "last_status": "failed",
   "outbox": {
     "release:v7.3.5:bbc88f61f293d3101b086ddc88d7f7b0b783890f255b095e3616c9c21a7a74f1": {
       "at": "2026-11-04T15:57:41+00:00",
