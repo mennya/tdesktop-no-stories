@@ -41,6 +41,21 @@ using std::wstring;
 	DWORD processId,
 	ULONGLONG creationTime);
 
+struct UpdateRelaunchOptions {
+	bool autostart = false;
+	bool debug = false;
+	bool startInTray = false;
+	wstring workingDirectory;
+	wstring keyFile;
+};
+
+[[nodiscard]] wstring UpdateRelaunchArguments(
+	const UpdateRelaunchOptions &options);
+[[nodiscard]] DWORD LaunchUpdatedProcess(
+	const wstring &executable,
+	const wstring &arguments,
+	const wstring &workingDirectory);
+
 extern LPTOP_LEVEL_EXCEPTION_FILTER _oldWndExceptionFilter;
 LONG CALLBACK _exceptionFilter(EXCEPTION_POINTERS* pExceptionPointers);
 LPTOP_LEVEL_EXCEPTION_FILTER WINAPI RedirectedSetUnhandledExceptionFilter(_In_opt_ LPTOP_LEVEL_EXCEPTION_FILTER lpTopLevelExceptionFilter);

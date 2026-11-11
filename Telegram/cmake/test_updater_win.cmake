@@ -25,6 +25,8 @@ PRIVATE
     base/platform/win/base_windows_safe_library.h
 )
 
+target_link_libraries(test_updater_win PRIVATE ole32 shell32)
+
 if (MINGW)
     target_link_options(test_updater_win PRIVATE -municode)
 endif()

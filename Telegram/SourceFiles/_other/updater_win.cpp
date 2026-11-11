@@ -106,6 +106,26 @@ namespace {
 
 constexpr auto kProcessExitTimeout = DWORD(5000);
 
+wstring QuoteUpdateArgument(const wstring &argument) {
+	auto result = wstring(1, L'"');
+	auto slashes = size_t(0);
+	for (const auto ch : argument) {
+		if (ch == L'\\') {
+			++slashes;
+			continue;
+		}
+		result.append(slashes * ((ch == L'"') ? 2 : 1), L'\\');
+		slashes = 0;
+		if (ch == L'"') {
+			result.push_back(L'\\');
+		}
+		result.push_back(ch);
+	}
+	result.append(slashes * 2, L'\\');
+	result.push_back(L'"');
+	return result;
+}
+
 bool ParsePositiveInteger(const WCHAR *text, ULONGLONG &result) {
 	result = 0;
 	for (; *text; ++text) {
@@ -122,6 +142,66 @@ bool ParsePositiveInteger(const WCHAR *text, ULONGLONG &result) {
 }
 
 } // namespace
+
+wstring UpdateRelaunchArguments(const UpdateRelaunchOptions &options) {
+	auto result = wstring(L"-noupdate");
+	if (options.autostart) {
+		result += L" -autostart";
+	}
+	if (options.debug) {
+		result += L" -debug";
+	}
+	if (options.startInTray) {
+		result += L" -startintray";
+	}
+	if (!options.workingDirectory.empty()) {
+		result += L" -workdir " + QuoteUpdateArgument(options.workingDirectory);
+	}
+	if (!options.keyFile.empty()) {
+		result += L" -key " + QuoteUpdateArgument(options.keyFile);
+	}
+	return result;
+}
+
+DWORD LaunchUpdatedProcess(
+		const wstring &executable,
+		const wstring &arguments,
+		const wstring &workingDirectory) {
+	if (executable.empty() || workingDirectory.empty()) {
+		return ERROR_INVALID_PARAMETER;
+	}
+	const auto initialized = CoInitializeEx(
+		nullptr,
+		COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+	if (FAILED(initialized) && initialized != RPC_E_CHANGED_MODE) {
+		return DWORD(initialized);
+	}
+	auto execution = SHELLEXECUTEINFOW();
+	execution.cbSize = sizeof(execution);
+	// https://learn.microsoft.com/en-us/windows/win32/api/shellapi/ns-shellapi-shellexecuteinfow#remarks
+	execution.fMask = SEE_MASK_NOASYNC
+		| SEE_MASK_NOCLOSEPROCESS
+		| SEE_MASK_FLAG_NO_UI;
+	execution.lpVerb = L"open";
+	execution.lpFile = executable.c_str();
+	execution.lpParameters = arguments.empty() ? nullptr : arguments.c_str();
+	execution.lpDirectory = workingDirectory.c_str();
+	execution.nShow = SW_SHOWNORMAL;
+	auto error = DWORD(ERROR_SUCCESS);
+	if (!ShellExecuteExW(&execution)) {
+		error = GetLastError();
+		if (!error) {
+			error = ERROR_GEN_FAILURE;
+		}
+	}
+	if (execution.hProcess) {
+		CloseHandle(execution.hProcess);
+	}
+	if (SUCCEEDED(initialized)) {
+		CoUninitialize();
+	}
+	return error;
+}
 
 bool ParseUpdateProcess(
 		const WCHAR *id,
@@ -616,6 +696,34 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdPara
 		writeLog(L"Error: No command line arguments!");
 	}
 
+#ifdef TDESKTOP_FORK_AUTOUPDATE
+	const auto options = UpdateRelaunchOptions{
+		.autostart = autostart,
+		.debug = debug,
+		.startInTray = startintray,
+		.workingDirectory = customWorkingDir,
+		.keyFile = customKeyFile,
+	};
+	const auto parameters = UpdateRelaunchArguments(options);
+	const auto error = LaunchUpdatedProcess(
+		updateTo + exeName,
+		parameters,
+		updateTo);
+	if (error != ERROR_SUCCESS) {
+		const auto text = FormatUpdateError(
+			needupdate
+				? L"The update was installed, but Telegram could not restart. Start Telegram manually."
+				: L"Telegram could not start. Start it manually.",
+			error);
+		writeLog(text);
+		MessageBoxW(nullptr, text.c_str(), L"Telegram No Stories", MB_OK | MB_ICONERROR);
+		closeLog();
+		return int(error);
+	}
+	writeLog(L"Updated Telegram launch accepted; closing log and quitting.");
+	closeLog();
+	return 0;
+#else
 	wstring targs;
 	if (autostart) targs += L" -autostart";
 	if (debug) targs += L" -debug";
@@ -683,6 +791,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdPara
 	closeLog();
 
 	return 0;
+#endif
 }
 
 #ifdef TDESKTOP_FORK_AUTOUPDATE
