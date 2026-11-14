@@ -1,13 +1,13 @@
 {
   "failures": {},
   "installed_tag": "v7.3.3",
-  "last_check_at": "2026-11-13T15:55:10+00:00",
+  "last_check_at": "2026-11-14T14:45:41+00:00",
   "last_counts": {
     "changed": 1,
     "deferred": 0,
     "model_calls": 1,
     "notifications": 0,
-    "sources": 6
+    "sources": 7
   },
   "last_status": "ok",
   "outbox": {
