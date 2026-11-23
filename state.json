@@ -1,24 +1,16 @@
 {
-  "failures": {
-    "GITHUB_RELEASES_HTTP_403": "2026-11-22T15:55:56+00:00"
-  },
+  "failures": {},
   "installed_tag": "v7.3.3",
-  "last_check_at": "2026-11-22T15:55:53+00:00",
+  "last_check_at": "2026-11-23T19:52:01+00:00",
   "last_counts": {
-    "changed": 0,
+    "changed": 1,
     "deferred": 0,
-    "model_calls": 0,
-    "notifications": 0,
-    "sources": 7
+    "model_calls": 1,
+    "notifications": 1,
+    "sources": 8
   },
-  "last_error": "GITHUB_RELEASES_HTTP_403",
-  "last_status": "failed",
+  "last_status": "ok",
   "outbox": {
-    "failure:GITHUB_RELEASES_HTTP_403": {
-      "at": "2026-11-22T15:55:55+00:00",
-      "status": "sent",
-      "url": "https://github.com/mennya/tdesktop-no-stories/actions/workflows/release-watch.yml"
-    },
     "release:v7.3.5:bbc88f61f293d3101b086ddc88d7f7b0b783890f255b095e3616c9c21a7a74f1": {
       "at": "2026-11-04T15:57:41+00:00",
       "status": "sent",
