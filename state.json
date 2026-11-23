@@ -28,6 +28,11 @@
       "at": "2026-11-07T14:40:47+00:00",
       "status": "sent",
       "url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.4.1"
+    },
+    "release:v7.4.6:994932804172ea38f8e7a46646e573e7ea518463384e84bfe98f0be711804a08": {
+      "at": "2026-11-23T19:51:57+00:00",
+      "status": "sending",
+      "url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.4.6"
     }
   },
   "reviewed": {
