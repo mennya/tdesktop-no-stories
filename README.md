@@ -73,7 +73,9 @@ the actual changed sources, and release publication requires a successful run
 for that exact commit.
 
 Daily upstream release monitoring runs in GitHub Actions and sends important
-update notices through Pushover. Equivalent stable labels such as `7.4` and
+update notices through Pushover. GitHub release and security-advisory requests
+use the workflow's automatic token, avoiding shared-IP anonymous API limits; no
+personal GitHub token is needed. Equivalent stable labels such as `7.4` and
 `7.4.0` are matched without changing notification identities. See
 [monitor setup and recovery](docs/release-watch.md).
 

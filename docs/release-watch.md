@@ -46,8 +46,9 @@ workflow inputs or chat:
 
 Optional repository variable `PUSHOVER_DEVICE` selects a device. If omitted,
 Pushover sends to all active devices on that account. The workflow's ephemeral
-`GITHUB_TOKEN` writes state; no personal access token is required. Telegram
-build credentials are not passed to this workflow.
+`GITHUB_TOKEN` authenticates upstream release/advisory API reads and writes
+state; no personal access token is required. Public changelog requests do not
+receive this token. Telegram build credentials are not passed to this workflow.
 
 `.github/release-watch-config.json` records the owner-confirmed installed tag
 and build commit. `state.json` on the separate `codex/release-watch-state` branch
@@ -65,6 +66,14 @@ Use **Run workflow**, branch `codex/no-stories`:
   marked test notification. It does not alter the release ledger.
 - `mode=check` checks real sources and saves state. A repeated unchanged check
   should report zero model calls and zero notifications.
+
+A manual run on a feature branch runs the unit tests and a read-only check of
+upstream release/advisory API access using that run's automatic GitHub token.
+It reports success and rate-limit metadata, without reading production secrets,
+calling the model, sending Pushover notifications or updating monitor state.
+Use this probe when investigating `GITHUB_RELEASES_HTTP_403` or
+`GITHUB_ADVISORIES_HTTP_403`; the normal default-branch check remains the final
+end-to-end verification.
 
 Pushover API acceptance confirms the service accepted a message, not that a
 particular device displayed it. Confirm initial device receipt separately.
