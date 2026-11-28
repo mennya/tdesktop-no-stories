@@ -54,6 +54,7 @@ class FakeHttp:
         return self.raw, {}
 
 
+@patch.dict(os.environ, ENV)
 class SourceTests(unittest.TestCase):
     def test_stable_version_filter(self):
         self.assertEqual(watch.version("v7.4"), (7, 4, 0))
@@ -128,7 +129,8 @@ class SourceTests(unittest.TestCase):
         releases = watch.fetch_releases(http, (7, 3, 3))
         self.assertEqual([r["tag_name"] for r in releases], ["v8.0.1", "v7.3.3"])
         self.assertIn("page=2", http.calls[1][0][1])
-        self.assertNotIn("Authorization", http.calls[0][0][2])
+        for args, _ in http.calls:
+            self.assertEqual(args[2]["Authorization"], "Bearer fixture-github")
 
     def test_missing_baseline_is_error(self):
         with self.assertRaisesRegex(watch.WatchError, "INSTALLED_RELEASE_NOT_FOUND"):
@@ -140,7 +142,36 @@ class SourceTests(unittest.TestCase):
                          ([{"ghsa_id": "b"}], {})])
         self.assertEqual(len(watch.fetch_advisories(http)), 2)
         self.assertEqual(http.calls[1][0][1], next_url)
-        self.assertNotIn("Authorization", http.calls[0][0][2])
+        for args, _ in http.calls:
+            self.assertEqual(args[2]["Authorization"], "Bearer fixture-github")
+
+    def test_upstream_fetch_refuses_missing_token_before_request(self):
+        for fetch, arguments in ((watch.fetch_releases, ((7, 3, 3),)),
+                                 (watch.fetch_advisories, ())):
+            with self.subTest(fetch=fetch.__name__), patch.dict(os.environ, {}, clear=True):
+                http = FakeHttp()
+                with self.assertRaisesRegex(watch.WatchError, "MISSING_GITHUB_TOKEN"):
+                    fetch(http, *arguments)
+                self.assertEqual(http.calls, [])
+
+    def test_advisory_external_next_page_is_not_requested(self):
+        http = FakeHttp([([], {"Link": '<https://outside.invalid/advisories>; rel="next"'})])
+        with self.assertRaisesRegex(watch.WatchError, "SOURCE_URL_INVALID"):
+            watch.fetch_advisories(http)
+        self.assertEqual(len(http.calls), 1)
+        self.assertEqual(http.calls[0][0][2]["Authorization"], "Bearer fixture-github")
+
+    def test_github_token_is_not_sent_to_public_changelog(self):
+        release = {"tag_name": "v7.3.3", "published_at": "2026-10-21T00:00:00Z", "body": "Baseline",
+                   "html_url": "https://github.com/telegramdesktop/tdesktop/releases/tag/v7.3.3"}
+        http = FakeHttp([([release], {}), ([], {})],
+                        b'<article class="entry" id="v7.3.3">Baseline notes</article>')
+        watch.collect(http, CONFIG)
+        external = [(args, kwargs) for args, kwargs in http.calls if args[1] == watch.CHANGELOG]
+        self.assertEqual(len(external), 1)
+        args, kwargs = external[0]
+        headers = args[2] if len(args) > 2 else kwargs.get("headers", {})
+        self.assertNotIn("Authorization", headers)
 
     def test_advisory_failure_is_not_empty_success(self):
         with self.assertRaisesRegex(watch.WatchError, "GITHUB_ADVISORIES_HTTP_403"):

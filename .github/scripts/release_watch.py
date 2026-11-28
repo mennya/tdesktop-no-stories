@@ -204,7 +204,7 @@ def fetch_releases(http, baseline):
     found = False
     result = []
     for page in range(1, 11):
-        items, _ = http.json("GITHUB_RELEASES", GITHUB + "/repos/" + UPSTREAM + f"/releases?per_page=100&page={page}", {"User-Agent": "Telegram-Release-Watch"})
+        items, _ = http.json("GITHUB_RELEASES", GITHUB + "/repos/" + UPSTREAM + f"/releases?per_page=100&page={page}", gh_headers())
         if not isinstance(items, list):
             raise WatchError("RELEASES_FORMAT_CHANGED")
         for item in items:
@@ -229,7 +229,7 @@ def fetch_advisories(http):
     result = []
     url = GITHUB + "/repos/" + UPSTREAM + "/security-advisories?state=published&per_page=100"
     for _ in range(10):
-        items, headers = http.json("GITHUB_ADVISORIES", url, {"User-Agent": "Telegram-Release-Watch"})
+        items, headers = http.json("GITHUB_ADVISORIES", url, gh_headers())
         if not isinstance(items, list):
             raise WatchError("ADVISORIES_FORMAT_CHANGED")
         result.extend(items)

@@ -40,6 +40,27 @@ jobs:
       - name: Test classification, source parsing and notification state
         run: python3 -m unittest discover -s .github/scripts -p 'test_release_watch.py' -v
 
+      - name: Check authenticated upstream API access on a feature branch
+        if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/codex/no-stories'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import sys
+          sys.path.insert(0, ".github/scripts")
+          import release_watch as watch
+          http = watch.Http()
+          for label, path in (
+              ("releases", "/releases?per_page=1"),
+              ("advisories", "/security-advisories?state=published&per_page=1"),
+          ):
+              data, headers = http.json("GITHUB_SOURCE_PROBE", watch.GITHUB + "/repos/" + watch.UPSTREAM + path, watch.gh_headers())
+              if not isinstance(data, list):
+                  raise watch.WatchError("SOURCE_PROBE_FORMAT_CHANGED")
+              print(json.dumps({"source": label, "status": "ok", "rate_limit": headers.get("X-RateLimit-Limit"), "remaining": headers.get("X-RateLimit-Remaining")}))
+          PY
+
   monitor:
     needs: tests
     if: >-
